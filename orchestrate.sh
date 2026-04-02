@@ -34,16 +34,47 @@ DISCUSSION_FILE="$OUTPUT_DIR/.discussion-state.txt"
 # ─── Helper Functions ───────────────────────────────────────────────────────────
 # Define early so they're available during reference material loading
 
+# Resolve claude CLI path — it may not be on PATH in a regular terminal
+CLAUDE_BIN=""
+if command -v claude &>/dev/null; then
+    CLAUDE_BIN="claude"
+elif [ -x "$HOME/.npm/_npx/07a316d604ae9f81/node_modules/.bin/claude" ]; then
+    CLAUDE_BIN="$HOME/.npm/_npx/07a316d604ae9f81/node_modules/.bin/claude"
+else
+    # Search common npm global/npx locations
+    for candidate in \
+        "$HOME/.local/bin/claude" \
+        "$HOME/.npm-global/bin/claude" \
+        "/usr/local/bin/claude" \
+        $(find "$HOME/.npm/_npx" -name claude -type f 2>/dev/null | head -1); do
+        if [ -x "$candidate" ]; then
+            CLAUDE_BIN="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$CLAUDE_BIN" ]; then
+    echo "ERROR: claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code" >&2
+    exit 1
+fi
+
 call_agent() {
     local system_prompt="$1"
     local user_message="$2"
     local result
+    local exit_code
 
-    result=$(claude -p "$user_message" \
+    result=$("$CLAUDE_BIN" -p "$user_message" \
         --system-prompt "$system_prompt" \
         --allowedTools "" \
         --max-turns 1 \
-        2>&1) || true
+        2>/dev/null) || exit_code=$?
+
+    if [ -z "$result" ]; then
+        _log "  ⚠ claude -p returned empty (exit code: ${exit_code:-0})"
+        return 1
+    fi
 
     echo "$result"
 }
