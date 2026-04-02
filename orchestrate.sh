@@ -37,12 +37,15 @@ DISCUSSION_FILE="$OUTPUT_DIR/.discussion-state.txt"
 call_agent() {
     local system_prompt="$1"
     local user_message="$2"
+    local result
 
-    claude -p "$user_message" \
+    result=$(claude -p "$user_message" \
         --system-prompt "$system_prompt" \
         --allowedTools "" \
         --max-turns 1 \
-        2>/dev/null
+        2>&1) || true
+
+    echo "$result"
 }
 
 _log() {
