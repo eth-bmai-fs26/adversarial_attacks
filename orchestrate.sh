@@ -23,7 +23,7 @@ set -euo pipefail
 TOPIC="${1:?Usage: orchestrate.sh \"topic\" [output_dir] [max_rounds]}"
 OUTPUT_DIR="${2:-./viz-output}"
 MAX_ROUNDS="${3:-20}"
-MIN_ROUNDS=6
+MIN_ROUNDS=10
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -122,7 +122,7 @@ Your personality: You care deeply about student understanding. You are SKEPTICAL
 IMPORTANT — Visual ambition: Default to 3D (Three.js / React Three Fiber) when the concept is inherently spatial. Orbitable 3D scenes with rotation help students see full geometry. Do NOT default to 2D simplifications when 3D would give deeper insight. A 2D panel can accompany 3D as a secondary view, but 3D should be the primary experience for spatial concepts.
 
 CRITICAL RULES FOR DISCUSSION QUALITY:
-- Do NOT say CONVERGED in the first 4 rounds. The concept needs more iteration.
+- Do NOT say CONVERGED in the first 9 rounds. The concept needs more iteration.
 - In early rounds (1-3), focus on PROBLEMS, ALTERNATIVES, and OPEN QUESTIONS — not agreement.
 - In each round, you MUST raise at least one substantive concern, propose at least one alternative approach, or identify a gap that hasn't been addressed.
 - Do not just validate what others said. Challenge assumptions. Ask "what if we did it completely differently?"
@@ -146,7 +146,7 @@ Your personality: You are a DEMANDING creative director. You have extremely high
 IMPORTANT — Visual ambition: Default to 3D orbitable scenes (Three.js / React Three Fiber) when the concept is spatial. Surfaces, manifolds, loss landscapes, decision boundaries, vector fields, transformations — these MUST be 3D with orbit controls, not flattened into 2D plots. Use glowing data points, bloom effects, animated trajectories with luminous trails, smooth camera orbits. The visualization should make students think "I want to play with that." Refer to the design patterns reference for specific 3D patterns (Orbitable Scene, 3D Surface Explorer, Animated Trajectory, 3D Slice View).
 
 CRITICAL RULES FOR DISCUSSION QUALITY:
-- Do NOT say CONVERGED in the first 4 rounds. The design needs more iteration.
+- Do NOT say CONVERGED in the first 9 rounds. The design needs more iteration.
 - In early rounds (1-3), propose MULTIPLE alternative design approaches — not just one. Explore the design space before narrowing.
 - Challenge other agents' visual choices. If something feels generic, say so and propose something more original.
 - In each round, you MUST either: propose a new visual element, challenge an existing choice, or suggest a completely different interaction model.
@@ -171,7 +171,7 @@ Your personality: You are a RIGOROUS skeptic. You don't let things slide. If som
 IMPORTANT — 3D considerations: When the visualization uses 3D (which it should for spatial concepts), think about: parametric surface equations for meshes, vertex count for performance, how to color-code surfaces by value, how to compute gradients/vectors for 3D arrow rendering, and whether computations can run at 60fps. Suggest concrete equations for surface generation.
 
 CRITICAL RULES FOR DISCUSSION QUALITY:
-- Do NOT say CONVERGED in the first 4 rounds. The math needs more scrutiny.
+- Do NOT say CONVERGED in the first 9 rounds. The math needs more scrutiny.
 - In early rounds (1-3), focus on finding PROBLEMS: mathematical inaccuracies, misleading simplifications, missing edge cases, computations that won't work in real-time.
 - Propose alternative mathematical formulations — don't just accept the first equation suggested. Compare tradeoffs.
 - In each round, you MUST either: identify a mathematical concern, propose a different formulation, or stress-test an existing proposal with edge cases.
@@ -281,6 +281,32 @@ for round in $(seq 1 "$MAX_ROUNDS"); do
 
     ROUND_TEXT=""
 
+    # ── Determine discussion phase ─────────────────────────────────────────────
+    if [ "$round" -le 3 ]; then
+        PHASE="diverge"
+        PHASE_INSTRUCTION="PHASE: WILD EXPLORATION (rounds 1-3). Your job is to DIVERGE. Propose radically different approaches. Think of at least 2 completely different ways this could work. Challenge every assumption. Ask 'what if we threw this away and started from scratch?' No idea is too wild. Do NOT agree with other agents yet — push back, propose alternatives, explore the edges of the design space."
+    elif [ "$round" -le 6 ]; then
+        PHASE="stress_test"
+        PHASE_INSTRUCTION="PHASE: STRESS TEST (rounds 4-6). The wild ideas are on the table. Now ATTACK them. Find the weaknesses in every proposal. What breaks? What confuses students? What's technically infeasible at 60fps? What would a skeptical professor tear apart? Be ruthless. For every flaw you find, propose a concrete fix or alternative."
+    elif [ "$round" -le 9 ]; then
+        PHASE="refine"
+        PHASE_INSTRUCTION="PHASE: DEEP REFINEMENT (rounds 7-9). The concept is taking shape. Now make it EXCEPTIONAL. Nail down every detail: exact equations, specific hex colors, precise animation timings in ms, camera positions as [x,y,z]. Identify the ONE signature moment that makes this visualization unforgettable. Resolve remaining tensions with concrete tradeoff decisions, not hand-waving."
+    else
+        PHASE="converge"
+        PHASE_INSTRUCTION="PHASE: CONVERGENCE (round 10+). You may now say CONVERGED — but ONLY if the concept is genuinely extraordinary. Ask yourself: 'Would I be proud to show this to 500 students?' If the answer is anything less than 'absolutely yes', keep pushing. If converging, your message must include a brief summary of what makes this concept exceptional."
+    fi
+
+    # ── Select Devil's Advocate ────────────────────────────────────────────────
+    # Every 2 rounds (rounds 2, 4, 6, 8...), one agent is assigned to argue
+    # AGAINST the current direction. Rotate which agent gets the role.
+    AGENTS=("Pedagogy Agent" "Design Agent" "Math Agent")
+    DEVILS_ADVOCATE=""
+    if (( round % 2 == 0 )); then
+        DA_INDEX=$(( (round / 2 - 1) % 3 ))
+        DEVILS_ADVOCATE="${AGENTS[$DA_INDEX]}"
+        _log "  🔥 Devil's Advocate this round: $DEVILS_ADVOCATE"
+    fi
+
     # ── Run each agent ──────────────────────────────────────────────────────────
 
     for agent_info in "Pedagogy Agent|$PEDAGOGY_PROMPT" "Design Agent|$DESIGN_PROMPT" "Math Agent|$MATH_PROMPT"; do
@@ -291,6 +317,19 @@ for round in $(seq 1 "$MAX_ROUNDS"); do
 
         DISCUSSION_SO_FAR=$(cat "$DISCUSSION_FILE")
 
+        # Build Devil's Advocate injection if this agent is the DA this round
+        DA_INJECTION=""
+        if [ "$agent_name" = "$DEVILS_ADVOCATE" ]; then
+            DA_INJECTION="
+
+🔥 DEVIL'S ADVOCATE ASSIGNMENT: You have been selected as Devil's Advocate this round. Your SOLE JOB is to argue AGAINST the current direction. Even if you secretly like it, you MUST:
+1. Identify the single biggest weakness in the current concept and argue it's a fatal flaw
+2. Propose a COMPLETELY DIFFERENT approach that solves the same pedagogical goal
+3. Challenge the other agents to defend their choices with specific evidence, not vibes
+4. Ask at least one question that nobody has considered yet
+Do NOT be polite about it. Be the tough critic that forces the best ideas to survive."
+        fi
+
         USER_MSG="Topic for visualization: $TOPIC
 
 $REFERENCE_CONTEXT
@@ -299,13 +338,12 @@ Here is the discussion so far:
 
 $DISCUSSION_SO_FAR
 
-It is now round $round. Respond to what the other agents have said (if anything).
+It is now round $round of up to $MAX_ROUNDS.
 
-IMPORTANT: In rounds 1-4, focus on EXPLORING and CHALLENGING — propose alternatives, find problems, push for more creative solutions. Do NOT say CONVERGED before round 5. Good ideas come from friction, not quick agreement.
+$PHASE_INSTRUCTION
+$DA_INJECTION
 
-From round 5 onward, you may say CONVERGED if and only if you genuinely cannot think of any meaningful improvement.
-
-Remember: default to 3D orbitable scenes for spatial concepts — consult the design reference above."
+Do NOT say CONVERGED before round 10. Remember: default to 3D orbitable scenes for spatial concepts — consult the design reference above."
 
         RESPONSE=$(call_agent "$agent_prompt" "$USER_MSG")
 
@@ -335,11 +373,19 @@ Remember: default to 3D orbitable scenes for spatial concepts — consult the de
     if [ "$round" -ge "$MIN_ROUNDS" ]; then
         _log "\n  Checking convergence..."
 
-        CONV_MSG="Here is the latest round of a multi-agent discussion about a math visualization:
+        FULL_DISCUSSION=$(cat "$DISCUSSION_FILE")
+        CONV_MSG="Here is the FULL transcript of a multi-agent discussion about a math visualization (current round: $round):
+
+$FULL_DISCUSSION
+
+--- LATEST ROUND ($round) ---
 
 $ROUND_TEXT
 
-Have the agents converged on a concept?"
+The discussion had 4 phases: Wild Exploration (1-3), Stress Test (4-6), Deep Refinement (7-9), Convergence (10+).
+Every even round, one agent was assigned Devil's Advocate to argue against the current direction.
+
+Have the agents converged on a concept? Remember: convergence requires ALL THREE agents saying CONVERGED, AND the concept must be genuinely exceptional — not just adequate."
 
         CONV_RESULT=$(call_agent "$CONVERGENCE_PROMPT" "$CONV_MSG")
         _log "  Result: $CONV_RESULT"
