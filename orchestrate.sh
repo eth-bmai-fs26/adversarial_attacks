@@ -31,18 +31,36 @@ TRANSCRIPT_FILE="$OUTPUT_DIR/discussion-transcript.md"
 CONCEPT_FILE="$OUTPUT_DIR/converged-concept.md"
 DISCUSSION_FILE="$OUTPUT_DIR/.discussion-state.txt"
 
+# ─── Helper Functions ───────────────────────────────────────────────────────────
+# Define early so they're available during reference material loading
+
+call_agent() {
+    local system_prompt="$1"
+    local user_message="$2"
+
+    claude -p "$user_message" \
+        --system-prompt "$system_prompt" \
+        --allowedTools "" \
+        --max-turns 1 \
+        2>/dev/null
+}
+
+_log() {
+    echo -e "$1" >&2
+}
+
 # ─── Load Reference Material ──────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_SPEC_DIR="$SCRIPT_DIR/skill_spec"
 
 if [ -d "$SKILL_SPEC_DIR" ]; then
-    log "Loading reference material from $SKILL_SPEC_DIR..."
+    _log "Loading reference material from $SKILL_SPEC_DIR..."
     DESIGN_PATTERNS=$(cat "$SKILL_SPEC_DIR/design-patterns-preview.md" 2>/dev/null || echo "")
     PIPELINE_STAGES=$(cat "$SKILL_SPEC_DIR/pipeline-stages-preview.md" 2>/dev/null || echo "")
 else
-    log "⚠ Warning: skill_spec/ directory not found at $SKILL_SPEC_DIR"
-    log "  Agents will discuss without reference material."
+    _log "⚠ Warning: skill_spec/ directory not found at $SKILL_SPEC_DIR"
+    _log "  Agents will discuss without reference material."
     DESIGN_PATTERNS=""
     PIPELINE_STAGES=""
 fi
@@ -172,23 +190,6 @@ What is explicitly NOT included.
 Any remaining tradeoffs the implementer should be aware of.
 AGENT_EOF
 
-# ─── Helper Functions ───────────────────────────────────────────────────────────
-
-call_agent() {
-    local system_prompt="$1"
-    local user_message="$2"
-
-    claude -p "$user_message" \
-        --system-prompt "$system_prompt" \
-        --allowedTools "" \
-        --max-turns 1 \
-        2>/dev/null
-}
-
-log() {
-    echo -e "$1" >&2
-}
-
 # ─── Initialize Transcript ─────────────────────────────────────────────────────
 
 cat > "$TRANSCRIPT_FILE" << EOF
@@ -210,9 +211,9 @@ echo "" > "$DISCUSSION_FILE"
 CONVERGED=false
 
 for round in $(seq 1 "$MAX_ROUNDS"); do
-    log "\n══════════════════════════════════════════"
-    log "  ROUND $round / $MAX_ROUNDS"
-    log "══════════════════════════════════════════"
+    _log "\n══════════════════════════════════════════"
+    _log "  ROUND $round / $MAX_ROUNDS"
+    _log "══════════════════════════════════════════"
 
     echo -e "\n## Round $round\n" >> "$TRANSCRIPT_FILE"
 
@@ -224,7 +225,7 @@ for round in $(seq 1 "$MAX_ROUNDS"); do
         agent_name="${agent_info%%|*}"
         agent_prompt="${agent_info#*|}"
 
-        log "  → $agent_name is thinking..."
+        _log "  → $agent_name is thinking..."
 
         DISCUSSION_SO_FAR=$(cat "$DISCUSSION_FILE")
 
@@ -241,7 +242,7 @@ It is your turn. Respond to what the other agents have said (if anything). Build
         RESPONSE=$(call_agent "$agent_prompt" "$USER_MSG")
 
         if [ -z "$RESPONSE" ]; then
-            log "  ✗ $agent_name returned empty response, retrying..."
+            _log "  ✗ $agent_name returned empty response, retrying..."
             sleep 2
             RESPONSE=$(call_agent "$agent_prompt" "$USER_MSG")
         fi
@@ -256,7 +257,7 @@ It is your turn. Respond to what the other agents have said (if anything). Build
         ROUND_TEXT="$ROUND_TEXT\n--- $agent_name ---\n$RESPONSE\n"
 
         CHAR_COUNT=${#RESPONSE}
-        log "  ✓ $agent_name responded ($CHAR_COUNT chars)"
+        _log "  ✓ $agent_name responded ($CHAR_COUNT chars)"
     done
 
     echo -e "---\n" >> "$TRANSCRIPT_FILE"
@@ -264,7 +265,7 @@ It is your turn. Respond to what the other agents have said (if anything). Build
     # ── Check convergence (after minimum rounds) ────────────────────────────────
 
     if [ "$round" -ge "$MIN_ROUNDS" ]; then
-        log "\n  Checking convergence..."
+        _log "\n  Checking convergence..."
 
         CONV_MSG="Here is the latest round of a multi-agent discussion about a math visualization:
 
@@ -273,34 +274,34 @@ $ROUND_TEXT
 Have the agents converged on a concept?"
 
         CONV_RESULT=$(call_agent "$CONVERGENCE_PROMPT" "$CONV_MSG")
-        log "  Result: $CONV_RESULT"
+        _log "  Result: $CONV_RESULT"
 
         echo -e "**Convergence Check (Round $round)**: $CONV_RESULT\n\n---\n" >> "$TRANSCRIPT_FILE"
 
         if echo "$CONV_RESULT" | grep -qi "^CONVERGED"; then
-            log "\n  ✅ CONVERGED after $round rounds!"
+            _log "\n  ✅ CONVERGED after $round rounds!"
             CONVERGED=true
             break
         else
-            log "  ⏳ Not yet converged, continuing..."
+            _log "  ⏳ Not yet converged, continuing..."
         fi
     else
-        log "  (Skipping convergence check — minimum $MIN_ROUNDS rounds required)"
+        _log "  (Skipping convergence check — minimum $MIN_ROUNDS rounds required)"
     fi
 done
 
 if [ "$CONVERGED" = false ]; then
-    log "\n  ⚠ Reached maximum rounds ($MAX_ROUNDS) without explicit convergence."
-    log "  Proceeding with moderator synthesis anyway."
+    _log "\n  ⚠ Reached maximum rounds ($MAX_ROUNDS) without explicit convergence."
+    _log "  Proceeding with moderator synthesis anyway."
     echo -e "\n**Note**: Discussion reached maximum rounds without explicit convergence. Moderator will synthesize best available concept.\n" >> "$TRANSCRIPT_FILE"
 fi
 
 # ─── Moderator Synthesis ────────────────────────────────────────────────────────
 
-log "\n══════════════════════════════════════════"
-log "  MODERATOR SYNTHESIS"
-log "══════════════════════════════════════════"
-log "  Moderator is synthesizing the converged concept..."
+_log "\n══════════════════════════════════════════"
+_log "  MODERATOR SYNTHESIS"
+_log "══════════════════════════════════════════"
+_log "  Moderator is synthesizing the converged concept..."
 
 FULL_TRANSCRIPT=$(cat "$DISCUSSION_FILE")
 
@@ -316,18 +317,18 @@ CONCEPT=$(call_agent "$MODERATOR_PROMPT" "$MODERATOR_MSG")
 
 echo "$CONCEPT" > "$CONCEPT_FILE"
 
-log "  ✓ Concept summary written to $CONCEPT_FILE"
+_log "  ✓ Concept summary written to $CONCEPT_FILE"
 
 # ─── Summary ────────────────────────────────────────────────────────────────────
 
-log "\n══════════════════════════════════════════"
-log "  PIPELINE COMPLETE"
-log "══════════════════════════════════════════"
-log "  Rounds: $round"
-log "  Converged: $CONVERGED"
-log "  Transcript: $TRANSCRIPT_FILE"
-log "  Concept:    $CONCEPT_FILE"
-log "══════════════════════════════════════════\n"
+_log "\n══════════════════════════════════════════"
+_log "  PIPELINE COMPLETE"
+_log "══════════════════════════════════════════"
+_log "  Rounds: $round"
+_log "  Converged: $CONVERGED"
+_log "  Transcript: $TRANSCRIPT_FILE"
+_log "  Concept:    $CONCEPT_FILE"
+_log "══════════════════════════════════════════\n"
 
 # Clean up temp file
 rm -f "$DISCUSSION_FILE"
