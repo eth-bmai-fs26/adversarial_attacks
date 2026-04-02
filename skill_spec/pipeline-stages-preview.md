@@ -43,10 +43,24 @@ Describe the spatial layout precisely:
 - Padding, margins, gaps between sections
 
 Recommended layout patterns:
-- **Canvas + Sidebar**: Main viz 65-70%, controls 30-35% on right
+- **3D Scene + Sidebar**: Three.js canvas 65-70%, controls + info panels 30-35% on right. The 3D scene is the hero — it should dominate the viewport.
+- **3D Scene + Overlay**: Full-viewport 3D scene with semi-transparent control overlay in a corner. Best for immersive demos.
+- **3D Scene + 2D Panel**: 3D scene on left, synchronized 2D projection/cross-section on right. Bridges 3D and 2D understanding.
+- **Canvas + Sidebar**: Main 2D viz 65-70%, controls 30-35% on right (for 2D-only concepts)
 - **Canvas + Bottom Bar**: Full-width viz, control strip below (64px height)
 - **Split View**: Two panels 50/50 for comparison modes
 - **Stacked**: Viz on top, data/info below (good for mobile)
+
+## 3D Scene Specification (if applicable)
+
+If the visualization uses Three.js / React Three Fiber, specify:
+- **Camera**: type (perspective/orthographic), fov, default position, lookAt target
+- **Orbit controls**: enabled, auto-rotate speed, min/max distance, damping
+- **Lighting**: types, positions, colors, intensities, shadows
+- **Ground plane**: grid style, size, position
+- **Post-processing**: bloom, anti-aliasing, ambient occlusion
+- **Key 3D objects**: geometry type, material properties, emissive values
+- **Reset view**: default camera position for the "Reset View" button
 
 ## Components
 
@@ -108,9 +122,10 @@ A step-by-step 2-minute walkthrough:
 4. "And if we push it further..." — edge case or advanced view
 
 ## Technical Notes
-- Recommended framework: React (.jsx) for complex state, HTML for simpler demos
-- Key libraries (d3, recharts, three.js, plotly, mathjs)
-- Performance: estimated element count, update frequency
+- Recommended framework: React Three Fiber (.jsx) for 3D concepts, React (.jsx) for 2D, HTML for simpler demos
+- Key libraries: `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` for 3D; d3, recharts, plotly for 2D; mathjs for computation
+- 3D: camera setup, orbit control constraints, lighting rig, post-processing pipeline
+- Performance: estimated vertex/object count, instancing strategy, target frame rate
 - State management approach
 ```
 
@@ -131,10 +146,11 @@ A step-by-step 2-minute walkthrough:
 
 ### Framework Decision
 
-- **React (.jsx)** when: multiple interactive controls, complex state, real-time computation, recharts/d3 integration needed
-- **HTML (.html)** when: single canvas animation, minimal controls, CSS-only animation, simpler interaction model
+- **React + React Three Fiber (.jsx)** when: the concept is inherently spatial — surfaces, manifolds, loss landscapes, 3D transformations, vector fields, decision boundaries in feature space, data point clouds. **This should be the default for most ML and linear algebra visualizations.** Use `@react-three/fiber` for the 3D scene and `@react-three/drei` for helpers (OrbitControls, Grid, Text, etc.). Use `@react-three/postprocessing` for visual effects (bloom, SMAA).
+- **React (.jsx)** when: 2D-only concepts with multiple interactive controls, complex state, real-time computation, recharts/d3 integration needed.
+- **HTML (.html)** when: single canvas animation, minimal controls, CSS-only animation, simpler interaction model.
 
-Most math visualizations should be React.
+**Default to 3D (React Three Fiber) unless the concept is fundamentally 1D/2D** (function plots, distributions, histograms). When in doubt, use 3D — it always looks more impressive and can include a 2D panel as a secondary view.
 
 ### Code Quality Requirements
 
@@ -144,6 +160,24 @@ Most math visualizations should be React.
 - requestAnimationFrame for continuous animations (never setInterval)
 - Default export, no required props
 - All values from the spec (colors, sizes, ranges) hardcoded exactly as specified
+
+### 3D Implementation Requirements (when using React Three Fiber)
+
+- Use `<Canvas>` from `@react-three/fiber` as the main 3D container
+- Use `<OrbitControls>` from `@react-three/drei` with `enableDamping`, `autoRotate` (slow), and constrained zoom range
+- Always include a "Reset View" button that smoothly returns the camera to its default position
+- Use `<Grid>` or `GridHelper` for spatial reference on the ground plane
+- Use `MeshPhysicalMaterial` for surfaces (supports transparency, roughness, emissive glow)
+- Use `InstancedMesh` for repeated objects (data points) — never create >50 individual mesh components
+- Use `BufferGeometry` with typed arrays for custom surfaces
+- Add `<EffectComposer>` with `<Bloom>` for emissive glow on key elements (data points, trails, highlighted objects)
+- Add `<SMAA>` for anti-aliasing
+- Use `useFrame` hook for per-frame animations (camera lerp, object movement), not `requestAnimationFrame`
+- Set `<Canvas shadows camera={{ fov: 50, position: [3, 3, 3] }}>` as defaults
+- Lighting: hemisphere light (sky + ground) + one directional light with shadows
+- Responsive: use `style={{ width: '100%', height: '100%' }}` on the Canvas and let the parent div control sizing
+- Text in 3D scenes: use `<Text>` from Drei (SDF text rendering) or `<Html>` for DOM overlays
+- Performance: target 60fps, use `<Stats>` from Drei during development, remove in production
 
 ### Math Rendering
 
@@ -188,3 +222,14 @@ Before presenting to the user, verify:
 - [ ] Animations run smoothly
 - [ ] Reset button works
 - [ ] Color palette matches the spec
+
+**Additional checks for 3D visualizations:**
+- [ ] Orbit controls work (rotate, zoom, pan) with smooth damping
+- [ ] Auto-rotate is on when idle (subtle, slow)
+- [ ] "Reset View" button returns camera to default angle smoothly
+- [ ] Lighting reveals surface structure (not flat-looking)
+- [ ] Emissive glow / bloom on key elements (data points, trails)
+- [ ] Ground plane grid is visible for spatial reference
+- [ ] Scene looks good from multiple camera angles (not just the default)
+- [ ] Performance is 60fps (check with Stats component)
+- [ ] Transparent surfaces are visible from both sides (`side: DoubleSide`)
