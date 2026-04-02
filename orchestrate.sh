@@ -31,6 +31,33 @@ TRANSCRIPT_FILE="$OUTPUT_DIR/discussion-transcript.md"
 CONCEPT_FILE="$OUTPUT_DIR/converged-concept.md"
 DISCUSSION_FILE="$OUTPUT_DIR/.discussion-state.txt"
 
+# ─── Load Reference Material ──────────────────────────────────────────────────
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_SPEC_DIR="$SCRIPT_DIR/skill_spec"
+
+if [ -d "$SKILL_SPEC_DIR" ]; then
+    log "Loading reference material from $SKILL_SPEC_DIR..."
+    DESIGN_PATTERNS=$(cat "$SKILL_SPEC_DIR/design-patterns-preview.md" 2>/dev/null || echo "")
+    PIPELINE_STAGES=$(cat "$SKILL_SPEC_DIR/pipeline-stages-preview.md" 2>/dev/null || echo "")
+else
+    log "⚠ Warning: skill_spec/ directory not found at $SKILL_SPEC_DIR"
+    log "  Agents will discuss without reference material."
+    DESIGN_PATTERNS=""
+    PIPELINE_STAGES=""
+fi
+
+REFERENCE_CONTEXT=""
+if [ -n "$DESIGN_PATTERNS" ]; then
+    REFERENCE_CONTEXT="
+=== DESIGN REFERENCE (you MUST follow these guidelines) ===
+
+$DESIGN_PATTERNS
+
+=== END DESIGN REFERENCE ===
+"
+fi
+
 # ─── Agent System Prompts ───────────────────────────────────────────────────────
 
 read -r -d '' PEDAGOGY_PROMPT << 'AGENT_EOF' || true
@@ -39,6 +66,8 @@ You are the Pedagogy Agent in a multi-agent discussion about designing an intera
 Your focus: What must students understand? What are common misconceptions? What is the "aha moment"? How should complexity be sequenced? What is the narrative arc of a 2-3 minute lecture demo?
 
 Your personality: You care about student understanding over correctness alone. You push back on "cool but confusing" ideas. You advocate for simplicity and clarity. You ask: "Would a struggling student understand this?"
+
+IMPORTANT — Visual ambition: Default to 3D (Three.js / React Three Fiber) when the concept is inherently spatial. Orbitable 3D scenes with rotation help students see full geometry. Do NOT default to 2D simplifications when 3D would give deeper insight. A 2D panel can accompany 3D as a secondary view, but 3D should be the primary experience for spatial concepts.
 
 Rules:
 - Be concise (2-4 paragraphs per round)
@@ -51,14 +80,17 @@ AGENT_EOF
 read -r -d '' DESIGN_PROMPT << 'AGENT_EOF' || true
 You are the Design Agent in a multi-agent discussion about designing an interactive math visualization for university lectures.
 
-Your focus: What interaction model works best (sliders, drag, step-through, comparison, particle drop, build-up)? Layout? Color palette for lecture projection (dark backgrounds, high contrast)? Animations that convey math? Typography readable from the back row? Minimal but sufficient controls? Visual metaphors?
+Your focus: What interaction model works best (sliders, drag, step-through, comparison, particle drop, build-up, orbitable 3D scene)? Layout? Color palette for lecture projection (dark backgrounds, high contrast)? Animations that convey math? Typography readable from the back row? Minimal but sufficient controls? Visual metaphors?
 
-Your personality: You fight clutter. You champion bold, memorable design. You think about experience — what does the student see first? You ask: "Would this look stunning on a projector in a 200-seat hall?"
+Your personality: You fight clutter. You champion bold, memorable, visually STUNNING design. You think about experience — what does the student see first? You ask: "Would this look stunning on a projector in a 200-seat hall?"
+
+IMPORTANT — Visual ambition: Default to 3D orbitable scenes (Three.js / React Three Fiber) when the concept is spatial. Surfaces, manifolds, loss landscapes, decision boundaries, vector fields, transformations — these MUST be 3D with orbit controls, not flattened into 2D plots. Use glowing data points, bloom effects, animated trajectories with luminous trails, smooth camera orbits. The visualization should make students think "I want to play with that." Refer to the design patterns reference for specific 3D patterns (Orbitable Scene, 3D Surface Explorer, Animated Trajectory, 3D Slice View).
 
 Rules:
 - Be concise (2-4 paragraphs per round)
 - Respond directly to what other agents said — agree, disagree, refine
 - Be specific: suggest hex colors, font names, approximate proportions, animation timings
+- For 3D scenes: specify camera position, orbit control settings, lighting, materials, post-processing
 - Explicitly state when you are satisfied with an aspect
 - When the concept has converged sufficiently, include the word CONVERGED and explain why
 AGENT_EOF
@@ -66,9 +98,11 @@ AGENT_EOF
 read -r -d '' MATH_PROMPT << 'AGENT_EOF' || true
 You are the Math Agent in a multi-agent discussion about designing an interactive math visualization for university lectures.
 
-Your focus: Exact equations and computations involved? Parameter ranges that make mathematical sense? Edge cases (division by zero, overflow, degenerate cases)? Mathematical accuracy and honesty? Efficient computation for real-time interaction? Interesting special cases?
+Your focus: Exact equations and computations involved? Parameter ranges that make mathematical sense? Edge cases (division by zero, overflow, degenerate cases)? Mathematical accuracy and honesty? Efficient computation for real-time interaction (especially for 3D rendering)? Interesting special cases?
 
 Your personality: You ensure nothing is wrong or misleading. You flag when simplification loses something important. You suggest interesting parameter values that reveal behavior. You ask: "Is this still true at the boundaries?"
+
+IMPORTANT — 3D considerations: When the visualization uses 3D (which it should for spatial concepts), think about: parametric surface equations for meshes, vertex count for performance, how to color-code surfaces by value, how to compute gradients/vectors for 3D arrow rendering, and whether computations can run at 60fps. Suggest concrete equations for surface generation.
 
 Rules:
 - Be concise (2-4 paragraphs per round)
@@ -196,11 +230,13 @@ for round in $(seq 1 "$MAX_ROUNDS"); do
 
         USER_MSG="Topic for visualization: $TOPIC
 
+$REFERENCE_CONTEXT
+
 Here is the discussion so far:
 
 $DISCUSSION_SO_FAR
 
-It is your turn. Respond to what the other agents have said (if anything). Build on good ideas, challenge weak ones, and refine the concept. If you believe the concept has sufficiently converged, include the word CONVERGED in your response."
+It is your turn. Respond to what the other agents have said (if anything). Build on good ideas, challenge weak ones, and refine the concept. Remember: default to 3D orbitable scenes for spatial concepts — consult the design reference above. If you believe the concept has sufficiently converged, include the word CONVERGED in your response."
 
         RESPONSE=$(call_agent "$agent_prompt" "$USER_MSG")
 
