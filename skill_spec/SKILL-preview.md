@@ -5,7 +5,7 @@ description: Multi-agent pipeline for creating interactive math visualizations f
 
 # Math Visualization Pipeline
 
-A multi-agent pipeline that turns brief math topic descriptions into fully specified, beautifully designed interactive visualizations for lectures.
+A multi-agent pipeline that turns brief math topic descriptions into fully specified, visually stunning interactive visualizations for lectures — with 3D orbitable scenes (Three.js / React Three Fiber) as the default for spatial concepts.
 
 The user provides a rough idea. Three AI agents (Pedagogy, Design, Math) then discuss the concept across multiple rounds until they converge on a unified vision. The converged concept is written up as a detailed specification document, and then built as a working interactive prototype.
 
@@ -102,8 +102,10 @@ Every run produces THREE deliverables:
 
 Read `references/design-patterns.md` for the full pattern library. Key principles:
 
+- **Default to 3D when the concept is spatial** — surfaces, manifolds, loss landscapes, decision boundaries, transformations, vector fields. Use Three.js / React Three Fiber with orbit controls. A rotatable 3D scene is always more engaging and insightful than a flat 2D diagram. Only use 2D when the concept is fundamentally 1D/2D (function plots, distributions, histograms).
+- **Visually stunning first, pedagogically sound always** — the visualization should make students think "I want to play with that." Visual ambition is not optional. Glowing data points, smooth camera orbits, bloom effects, animated trajectories with luminous trails — these are the baseline, not extras.
 - **Immediately legible** from the back of a lecture hall
 - **Pedagogically sequenced** — reveal complexity gradually
 - **Interactive but focused** — controls illuminate the math, not distract
-- **Beautiful** — bold, memorable design that makes math exciting
 - **Dark backgrounds** with vibrant accents for projection
+- **Orbitable and explorable** — for 3D scenes, the instructor can rotate live to reveal structure from different angles. Always include auto-rotate when idle and a "Reset View" button.
