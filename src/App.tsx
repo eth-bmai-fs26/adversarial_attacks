@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
-import type { Beat } from './types';
+import Beat1Crime from './beats/Beat1Crime';
+import { loadStandardModel, getImageById } from './lib/data';
+import type { Beat, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -26,7 +29,41 @@ export default function App() {
     isTransitioning,
   } = useBeatNavigation();
 
-  const showSliderArea = currentBeat !== 0;
+  const [standardModel, setStandardModel] = useState<ModelData | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState(0);
+  const [epsilon, setEpsilon] = useState(0);
+
+  // Load standard model data on mount
+  useEffect(() => {
+    loadStandardModel().then(setStandardModel).catch(console.error);
+  }, []);
+
+  // Reset epsilon when navigating to beat 0 (Escape key reset)
+  useEffect(() => {
+    if (currentBeat === 0) {
+      setEpsilon(0);
+    }
+  }, [currentBeat]);
+
+  const selectedImage = standardModel
+    ? getImageById(standardModel, selectedImageId) ?? standardModel.images[0]
+    : null;
+
+  const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
+
+  function renderBeat() {
+    if (currentBeat === 1 && selectedImage) {
+      return (
+        <Beat1Crime
+          imageData={selectedImage}
+          isActive={currentBeat === 1 && !isTransitioning}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+        />
+      );
+    }
+    return <BeatPlaceholder beat={currentBeat} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col no-select">
@@ -47,10 +84,10 @@ export default function App() {
 
       {/* Beat content area */}
       <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
-        <BeatPlaceholder beat={currentBeat} />
+        {renderBeat()}
       </BeatContainer>
 
-      {/* Epsilon slider area — reserved for Beats 1-3 */}
+      {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
       {showSliderArea && (
         <div className="beat-slider-area shrink-0" />
       )}
