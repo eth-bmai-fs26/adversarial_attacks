@@ -4,6 +4,7 @@ import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
 import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import Beat1Crime from './beats/Beat1Crime';
+import Beat2aGhost from './beats/Beat2aGhost';
 import { loadStandardModel, getImageById } from './lib/data';
 import type { Beat, ModelData } from './types';
 
@@ -67,6 +68,16 @@ export default function App() {
         />
       );
     }
+    if (currentBeat === '2a' && selectedImage) {
+      return (
+        <Beat2aGhost
+          imageData={selectedImage}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === '2a' && !isTransitioning}
+        />
+      );
+    }
     return <BeatPlaceholder beat={currentBeat} />;
   }
 
@@ -93,7 +104,7 @@ export default function App() {
       </BeatContainer>
 
       {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
-      {showSliderArea && (
+      {showSliderArea && currentBeat !== '2a' && (
         <div className="beat-slider-area shrink-0" />
       )}
 
