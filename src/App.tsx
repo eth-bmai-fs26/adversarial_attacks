@@ -1,7 +1,10 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
-import type { Beat } from './types';
+import ImageGallery from './components/ImageGallery';
+import { loadStandardModel } from './lib/data';
+import type { Beat, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -25,6 +28,30 @@ export default function App() {
     goToBeat,
     isTransitioning,
   } = useBeatNavigation();
+
+  const [modelData, setModelData] = useState<ModelData | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<number>(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+
+  // Load standard model data
+  useEffect(() => {
+    loadStandardModel().then(data => {
+      setModelData(data);
+      if (data.images.length > 0) {
+        setSelectedImageId(data.images[0].id);
+      }
+    }).catch(() => {
+      // Data not available yet (precompute not run)
+    });
+  }, []);
+
+  const handleSelectImage = useCallback((id: number) => {
+    setSelectedImageId(id);
+  }, []);
+
+  const handleGalleryToggle = useCallback(() => {
+    setGalleryOpen(prev => !prev);
+  }, []);
 
   const showSliderArea = currentBeat !== 0;
 
@@ -52,13 +79,34 @@ export default function App() {
 
       {/* Epsilon slider area — reserved for Beats 1-3 */}
       {showSliderArea && (
-        <div className="beat-slider-area shrink-0" />
+        <div className="beat-slider-area shrink-0 flex items-center justify-end px-6">
+          {/* Gallery trigger */}
+          {modelData && (
+            <button
+              onClick={handleGalleryToggle}
+              className="text-body-md text-primary hover:text-true-class transition-colors"
+            >
+              Explore all images &rarr;
+            </button>
+          )}
+        </div>
       )}
 
       {/* Mobile dots — shown only on <768px */}
       <div className="beat-dots-mobile shrink-0 flex items-center justify-center">
         <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
       </div>
+
+      {/* Image Gallery overlay */}
+      {modelData && (
+        <ImageGallery
+          images={modelData.images}
+          selectedImageId={selectedImageId}
+          onSelectImage={handleSelectImage}
+          isOpen={galleryOpen}
+          onToggle={handleGalleryToggle}
+        />
+      )}
     </div>
   );
 }
