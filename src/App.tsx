@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
-import type { Beat } from './types';
+import Beat3Adversarial from './beats/Beat3Adversarial';
+import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
+import type { Beat, ImageData, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -26,7 +29,40 @@ export default function App() {
     isTransitioning,
   } = useBeatNavigation();
 
+  const [epsilon, setEpsilon] = useState(0);
+  const [selectedImageId] = useState(0);
+  const [standardData, setStandardData] = useState<ModelData | null>(null);
+  const [robustData, setRobustData] = useState<ModelData | null>(null);
+
+  // Load model data
+  useEffect(() => {
+    loadStandardModel().then(setStandardData).catch(console.error);
+    loadRobustModel().then(setRobustData).catch(console.error);
+  }, []);
+
+  const standardImage: ImageData | undefined = standardData
+    ? getImageById(standardData, selectedImageId)
+    : undefined;
+  const robustImage: ImageData | undefined = robustData
+    ? getImageById(robustData, selectedImageId)
+    : undefined;
+
   const showSliderArea = currentBeat !== 0;
+
+  const renderBeat = () => {
+    if (currentBeat === 3 && standardImage) {
+      return (
+        <Beat3Adversarial
+          standardImageData={standardImage}
+          robustImageData={robustImage ?? null}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === 3 && !isTransitioning}
+        />
+      );
+    }
+    return <BeatPlaceholder beat={currentBeat} />;
+  };
 
   return (
     <div className="min-h-screen flex flex-col no-select">
@@ -47,7 +83,7 @@ export default function App() {
 
       {/* Beat content area */}
       <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
-        <BeatPlaceholder beat={currentBeat} />
+        {renderBeat()}
       </BeatContainer>
 
       {/* Epsilon slider area — reserved for Beats 1-3 */}
