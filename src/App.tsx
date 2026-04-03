@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
@@ -7,6 +7,7 @@ import Beat1Crime from './beats/Beat1Crime';
 import Beat2aGhost from './beats/Beat2aGhost';
 import Beat2bSplit from './beats/Beat2bSplit';
 import Beat3Adversarial from './beats/Beat3Adversarial';
+import ImageGallery from './components/ImageGallery';
 import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
 import type { Beat, ModelData } from './types';
 
@@ -38,6 +39,7 @@ export default function App() {
   const [robustModel, setRobustModel] = useState<ModelData | null>(null);
   const [selectedImageId, setSelectedImageId] = useState(0);
   const [epsilon, setEpsilon] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   // Load model data on mount
   useEffect(() => {
@@ -59,6 +61,15 @@ export default function App() {
   const robustImage = robustModel
     ? getImageById(robustModel, selectedImageId) ?? robustModel.images[0]
     : null;
+
+  const handleSelectImage = useCallback((id: number) => {
+    setSelectedImageId(id);
+    setEpsilon(0);
+  }, []);
+
+  const handleGalleryToggle = useCallback(() => {
+    setGalleryOpen(prev => !prev);
+  }, []);
 
   const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
 
@@ -134,13 +145,34 @@ export default function App() {
 
       {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
       {showSliderArea && currentBeat !== '2a' && currentBeat !== '2b' && (
-        <div className="beat-slider-area shrink-0" />
+        <div className="beat-slider-area shrink-0 flex items-center justify-end px-6">
+          {/* Gallery trigger */}
+          {standardModel && (
+            <button
+              onClick={handleGalleryToggle}
+              className="text-body-md text-primary hover:text-true-class transition-colors"
+            >
+              Explore all images &rarr;
+            </button>
+          )}
+        </div>
       )}
 
       {/* Mobile dots — shown only on <768px */}
       <div className="beat-dots-mobile shrink-0 flex items-center justify-center">
         <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
       </div>
+
+      {/* Image Gallery overlay */}
+      {standardModel && (
+        <ImageGallery
+          images={standardModel.images}
+          selectedImageId={selectedImageId}
+          onSelectImage={handleSelectImage}
+          isOpen={galleryOpen}
+          onToggle={handleGalleryToggle}
+        />
+      )}
     </div>
   );
 }
