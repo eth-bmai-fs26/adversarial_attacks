@@ -1,6 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { ImageData } from '../types';
 import { interpolateLogits, softmax } from '../lib/data';
+
+function useResponsiveImageSize(): number {
+  const [size, setSize] = useState(() => {
+    if (typeof window === 'undefined') return 480;
+    if (window.innerWidth < 768) return Math.min(window.innerWidth - 32, 480);
+    if (window.innerWidth < 1440) return 360;
+    return 480;
+  });
+  useEffect(() => {
+    const update = () => {
+      if (window.innerWidth < 768) setSize(Math.min(window.innerWidth - 32, 480));
+      else if (window.innerWidth < 1440) setSize(360);
+      else setSize(480);
+    };
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return size;
+}
 import MnistCanvas from '../components/MnistCanvas';
 import SignMapCanvas, { countActivePixels } from '../components/SignMapCanvas';
 import ProbabilityBars from '../components/ProbabilityBars';
@@ -25,6 +44,7 @@ export default function Beat3Adversarial({
   isActive,
   highContrast = false,
 }: Beat3Props) {
+  const imageSize = useResponsiveImageSize();
   const [modelType, setModelType] = useState<'standard' | 'robust'>('standard');
   const [crossfadePhase, setCrossfadePhase] = useState<'idle' | 'out' | 'in'>('idle');
   const pendingModelRef = useRef<'standard' | 'robust' | null>(null);
@@ -161,13 +181,14 @@ export default function Beat3Adversarial({
       </div>
 
       {/* Image stack: MNIST + Sign Map overlay */}
-      <div className="relative image-size">
+      <div className="relative" style={{ width: imageSize, height: imageSize }}>
         <MnistCanvas
           pixels={standardImageData.pixels}
           signMap={activeImageData.loss_grad_sign}
           epsilon={epsilon}
           dimmed={true}
-          className="image-size"
+          size={imageSize}
+          className="absolute inset-0"
         />
         <div
           className="absolute inset-0"
@@ -180,7 +201,7 @@ export default function Beat3Adversarial({
             signMap={activeImageData.loss_grad_sign}
             deadPixelMask={activeImageData.dead_pixel_mask}
             mode="uniform"
-            size={480}
+            size={imageSize}
             highContrast={highContrast}
           />
         </div>

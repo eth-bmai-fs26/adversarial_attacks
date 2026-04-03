@@ -256,3 +256,19 @@
   from { transform: translateY(0); }
   to { transform: translateY(100%); }
 }
+
+/* Reduced motion: disable all animations and transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Global focus ring for interactive elements */
+:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
