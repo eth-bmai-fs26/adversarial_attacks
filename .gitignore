@@ -1,1 +1,3 @@
 viz-output/
+dist/
+node_modules/
