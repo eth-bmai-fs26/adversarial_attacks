@@ -99,4 +99,47 @@
     .text-body-sm { font-size: 11.2px; }
     .text-body-xs { font-size: 8.8px; }
   }
+
+  /* Beat navigation layout */
+
+  /* Default ≥1440px */
+  .beat-header {
+    height: 40px;
+    --dot-size: 10px;
+    --dot-gap: 16px;
+  }
+  .beat-slider-area {
+    height: 64px;
+  }
+  .beat-dots-mobile {
+    display: none;
+  }
+
+  /* Compact 768-1439px */
+  @media (min-width: 768px) and (max-width: 1439px) {
+    .beat-header {
+      height: 32px;
+      --dot-size: 8px;
+      --dot-gap: 12px;
+    }
+    .beat-slider-area {
+      height: 48px;
+    }
+  }
+
+  /* Mobile <768px */
+  @media (max-width: 767px) {
+    .beat-header {
+      display: none;
+    }
+    .beat-dots-mobile {
+      display: flex;
+      height: 32px;
+      --dot-size: 8px;
+      --dot-gap: 12px;
+    }
+    .beat-slider-area {
+      height: 48px;
+    }
+  }
 }
