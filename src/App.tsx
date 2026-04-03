@@ -1,6 +1,7 @@
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
+import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import type { Beat } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ export default function App() {
   const {
     currentBeat,
     goToBeat,
+    goNext,
     isTransitioning,
   } = useBeatNavigation();
 
@@ -47,7 +49,11 @@ export default function App() {
 
       {/* Beat content area */}
       <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
-        <BeatPlaceholder beat={currentBeat} />
+        {currentBeat === 0 ? (
+          <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />
+        ) : (
+          <BeatPlaceholder beat={currentBeat} />
+        )}
       </BeatContainer>
 
       {/* Epsilon slider area — reserved for Beats 1-3 */}
