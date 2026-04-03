@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
-import type { Beat } from './types';
+import Beat2aGhost from './beats/Beat2aGhost';
+import { loadStandardModel } from './lib/data';
+import type { Beat, ImageData, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -26,7 +29,32 @@ export default function App() {
     isTransitioning,
   } = useBeatNavigation();
 
+  const [standardModel, setStandardModel] = useState<ModelData | null>(null);
+  const [epsilon, setEpsilon] = useState(0);
+  const [selectedImageId, setSelectedImageId] = useState(0);
+
+  // Load standard model data
+  useEffect(() => {
+    loadStandardModel().then(setStandardModel);
+  }, []);
+
+  const selectedImage: ImageData | undefined = standardModel?.images[selectedImageId];
+
   const showSliderArea = currentBeat !== 0;
+
+  const renderBeat = () => {
+    if (currentBeat === '2a' && selectedImage) {
+      return (
+        <Beat2aGhost
+          imageData={selectedImage}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === '2a' && !isTransitioning}
+        />
+      );
+    }
+    return <BeatPlaceholder beat={currentBeat} />;
+  };
 
   return (
     <div className="min-h-screen flex flex-col no-select">
@@ -47,11 +75,11 @@ export default function App() {
 
       {/* Beat content area */}
       <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
-        <BeatPlaceholder beat={currentBeat} />
+        {renderBeat()}
       </BeatContainer>
 
-      {/* Epsilon slider area — reserved for Beats 1-3 */}
-      {showSliderArea && (
+      {/* Epsilon slider area — reserved for Beats 1-3 (only when Beat2a doesn't embed its own) */}
+      {showSliderArea && currentBeat !== '2a' && (
         <div className="beat-slider-area shrink-0" />
       )}
 
