@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
+import Beat0ColdOpen from './beats/Beat0ColdOpen';
+import Beat1Crime from './beats/Beat1Crime';
 import Beat2aGhost from './beats/Beat2aGhost';
-import { loadStandardModel } from './lib/data';
-import type { Beat, ImageData, ModelData } from './types';
+import { loadStandardModel, getImageById } from './lib/data';
+import type { Beat, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -26,23 +28,46 @@ export default function App() {
   const {
     currentBeat,
     goToBeat,
+    goNext,
     isTransitioning,
   } = useBeatNavigation();
 
   const [standardModel, setStandardModel] = useState<ModelData | null>(null);
-  const [epsilon, setEpsilon] = useState(0);
   const [selectedImageId, setSelectedImageId] = useState(0);
+  const [epsilon, setEpsilon] = useState(0);
 
-  // Load standard model data
+  // Load standard model data on mount
   useEffect(() => {
-    loadStandardModel().then(setStandardModel);
+    loadStandardModel().then(setStandardModel).catch(console.error);
   }, []);
 
-  const selectedImage: ImageData | undefined = standardModel?.images[selectedImageId];
+  // Reset epsilon when navigating to beat 0 (Escape key reset)
+  useEffect(() => {
+    if (currentBeat === 0) {
+      setEpsilon(0);
+    }
+  }, [currentBeat]);
 
-  const showSliderArea = currentBeat !== 0;
+  const selectedImage = standardModel
+    ? getImageById(standardModel, selectedImageId) ?? standardModel.images[0]
+    : null;
 
-  const renderBeat = () => {
+  const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
+
+  function renderBeat() {
+    if (currentBeat === 0) {
+      return <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />;
+    }
+    if (currentBeat === 1 && selectedImage) {
+      return (
+        <Beat1Crime
+          imageData={selectedImage}
+          isActive={currentBeat === 1 && !isTransitioning}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+        />
+      );
+    }
     if (currentBeat === '2a' && selectedImage) {
       return (
         <Beat2aGhost
@@ -54,7 +79,7 @@ export default function App() {
       );
     }
     return <BeatPlaceholder beat={currentBeat} />;
-  };
+  }
 
   return (
     <div className="min-h-screen flex flex-col no-select">
@@ -78,7 +103,7 @@ export default function App() {
         {renderBeat()}
       </BeatContainer>
 
-      {/* Epsilon slider area — reserved for Beats 1-3 (only when Beat2a doesn't embed its own) */}
+      {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
       {showSliderArea && currentBeat !== '2a' && (
         <div className="beat-slider-area shrink-0" />
       )}
