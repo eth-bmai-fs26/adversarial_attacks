@@ -1,50 +1,63 @@
-const COLOR_SWATCHES = [
-  { name: 'bg', color: '#0f172a' },
-  { name: 'tile-pos', color: '#fbbf24' },
-  { name: 'tile-neg', color: '#22d3ee' },
-  { name: 'true-class', color: '#38bdf8' },
-  { name: 'adversarial', color: '#f472b6' },
-  { name: 'success', color: '#34d399' },
-  { name: 'tile-dormant', color: '#131c2e' },
-  { name: 'tile-gap', color: '#0a0f1a' },
-  { name: 'text-primary', color: '#f1f5f9' },
-  { name: 'text-muted', color: '#94a3b8' },
-];
+import { useBeatNavigation } from './hooks/useBeatNavigation';
+import BeatDots from './components/BeatDots';
+import BeatContainer from './components/BeatContainer';
+import type { Beat } from './types';
+
+const BEAT_LABELS: Record<string, string> = {
+  '0': 'Beat 0: Panda Cold Open',
+  '1': 'Beat 1: The Crime',
+  '2a': 'Beat 2a: The Ghost',
+  '2b': 'Beat 2b: FGSM vs Gradient',
+  '3': 'Beat 3: Adversarial Training',
+};
+
+function BeatPlaceholder({ beat }: { beat: Beat }) {
+  return (
+    <div className="text-label-main text-primary text-center">
+      {BEAT_LABELS[String(beat)]}
+    </div>
+  );
+}
 
 export default function App() {
+  const {
+    currentBeat,
+    goToBeat,
+    isTransitioning,
+  } = useBeatNavigation();
+
+  const showSliderArea = currentBeat !== 0;
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-[1200px] mx-auto flex flex-col items-center gap-12">
-        {/* Title */}
-        <h1 className="text-label-main text-center text-primary">
-          FGSM Adversarial Attack Visualization
-        </h1>
+    <div className="min-h-screen flex flex-col no-select">
+      {/* Header — 40px (32px compact), hidden on mobile */}
+      <header className="beat-header shrink-0 flex items-center justify-center relative">
+        <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
+        {/* Settings placeholder */}
+        <button
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
+          aria-label="Settings"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="10" cy="10" r="3" />
+            <path d="M10 1v2m0 14v2M1 10h2m14 0h2m-2.9-6.4-1.4 1.4M5.3 14.7l-1.4 1.4m0-11.8 1.4 1.4m9.4 9.4 1.4 1.4" />
+          </svg>
+        </button>
+      </header>
 
-        {/* Font samples */}
-        <div className="flex flex-col gap-4 w-full">
-          <p className="text-label-hero text-primary">Syne Bold 52px</p>
-          <p className="text-label-main text-primary">Syne Bold 44px</p>
-          <p className="text-mono-lg text-primary">JetBrains Mono 28px — ε = 0.15</p>
-          <p className="text-mono-md text-primary">JetBrains Mono 20px — P(7) = 0.93</p>
-          <p className="text-mono-sm text-muted">JetBrains Mono 18px — margin: 4.2</p>
-          <p className="text-body-lg text-primary">DM Sans 18px — Drag the slider to increase ε</p>
-          <p className="text-body-md text-muted">DM Sans 16px — Standard vs Robust</p>
-          <p className="text-body-sm text-muted">DM Sans 14px — Disclaimer text</p>
-          <p className="text-body-xs text-muted">DM Sans 11px — Attribution</p>
-        </div>
+      {/* Beat content area */}
+      <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
+        <BeatPlaceholder beat={currentBeat} />
+      </BeatContainer>
 
-        {/* Color swatches */}
-        <div className="flex flex-wrap gap-3 justify-center">
-          {COLOR_SWATCHES.map(({ name, color }) => (
-            <div key={name} className="flex flex-col items-center gap-1">
-              <div
-                className="w-12 h-12 rounded border border-white/20"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-body-xs text-muted">{name}</span>
-            </div>
-          ))}
-        </div>
+      {/* Epsilon slider area — reserved for Beats 1-3 */}
+      {showSliderArea && (
+        <div className="beat-slider-area shrink-0" />
+      )}
+
+      {/* Mobile dots — shown only on <768px */}
+      <div className="beat-dots-mobile shrink-0 flex items-center justify-center">
+        <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
       </div>
     </div>
   );
