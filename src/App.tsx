@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
 import TabBar from './components/TabBar';
+import Settings from './components/Settings';
+import LoadingScreen from './components/LoadingScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import Beat1Crime from './beats/Beat1Crime';
 import Beat2aGhost from './beats/Beat2aGhost';
@@ -10,25 +13,10 @@ import Beat2bSplit from './beats/Beat2bSplit';
 import Beat3Adversarial from './beats/Beat3Adversarial';
 import ImageGallery from './components/ImageGallery';
 import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
-import type { Beat, ModelData } from './types';
+import type { ModelData } from './types';
 
 const LabMode = lazy(() => import('./beats/LabMode'));
-
-const BEAT_LABELS: Record<string, string> = {
-  '0': 'Beat 0: Panda Cold Open',
-  '1': 'Beat 1: The Crime',
-  '2a': 'Beat 2a: The Ghost',
-  '2b': 'Beat 2b: FGSM vs Gradient',
-  '3': 'Beat 3: Adversarial Training',
-};
-
-function BeatPlaceholder({ beat }: { beat: Beat }) {
-  return (
-    <div className="text-label-main text-primary text-center">
-      {BEAT_LABELS[String(beat)]}
-    </div>
-  );
-}
+const AdvancedMode3D = lazy(() => import('./beats/AdvancedMode3D'));
 
 export default function App() {
   const {
@@ -38,24 +26,45 @@ export default function App() {
     isTransitioning,
   } = useBeatNavigation();
 
-  const [activeTab, setActiveTab] = useState<'demo' | 'lab'>('demo');
+  // Data loading state
   const [standardModel, setStandardModel] = useState<ModelData | null>(null);
   const [robustModel, setRobustModel] = useState<ModelData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Shared state
+  const [activeTab, setActiveTab] = useState<'demo' | 'lab'>('demo');
   const [selectedImageId, setSelectedImageId] = useState(0);
   const [epsilon, setEpsilon] = useState(0);
+  const [highContrast, setHighContrast] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [advancedModeOpen, setAdvancedModeOpen] = useState(false);
 
-  const handleTabChange = useCallback((tab: 'demo' | 'lab') => {
-    setActiveTab(tab);
-  }, []);
+  // Lazy-load robust model on first Beat 3 visit
+  const robustLoadedRef = useRef(false);
+  const [robustLoading, setRobustLoading] = useState(false);
 
-  // Load model data on mount
+  // Load standard model on startup
   useEffect(() => {
-    loadStandardModel().then(setStandardModel).catch(console.error);
-    loadRobustModel().then(setRobustModel).catch(console.error);
+    loadStandardModel()
+      .then(setStandardModel)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Reset epsilon when navigating to beat 0 (Escape key reset)
+  // Lazy-load robust model when Beat 3 is first visited
+  useEffect(() => {
+    if (currentBeat === 3 && !robustLoadedRef.current && !robustModel) {
+      robustLoadedRef.current = true;
+      setRobustLoading(true);
+      loadRobustModel()
+        .then(setRobustModel)
+        .catch(err => console.error('Failed to load robust model:', err))
+        .finally(() => setRobustLoading(false));
+    }
+  }, [currentBeat, robustModel]);
+
+  // Reset epsilon when navigating to Beat 0
   useEffect(() => {
     if (currentBeat === 0) {
       setEpsilon(0);
@@ -79,54 +88,79 @@ export default function App() {
     setGalleryOpen(prev => !prev);
   }, []);
 
-  const showSliderArea = activeTab === 'demo' && currentBeat !== 0 && currentBeat !== 1;
+  const handleTabChange = useCallback((tab: 'demo' | 'lab') => {
+    setActiveTab(tab);
+  }, []);
+
+  // Loading / error screens
+  if (loading) return <LoadingScreen />;
+  if (error) return <LoadingScreen error={error} />;
 
   function renderBeat() {
     if (currentBeat === 0) {
-      return <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />;
+      return (
+        <ErrorBoundary>
+          <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />
+        </ErrorBoundary>
+      );
     }
     if (currentBeat === 1 && selectedImage) {
       return (
-        <Beat1Crime
-          imageData={selectedImage}
-          isActive={currentBeat === 1 && !isTransitioning}
-          epsilon={epsilon}
-          onEpsilonChange={setEpsilon}
-        />
+        <ErrorBoundary>
+          <Beat1Crime
+            imageData={selectedImage}
+            isActive={currentBeat === 1 && !isTransitioning}
+            epsilon={epsilon}
+            onEpsilonChange={setEpsilon}
+          />
+        </ErrorBoundary>
       );
     }
     if (currentBeat === '2a' && selectedImage) {
       return (
-        <Beat2aGhost
-          imageData={selectedImage}
-          epsilon={epsilon}
-          onEpsilonChange={setEpsilon}
-          isActive={currentBeat === '2a' && !isTransitioning}
-        />
+        <ErrorBoundary>
+          <Beat2aGhost
+            imageData={selectedImage}
+            epsilon={epsilon}
+            onEpsilonChange={setEpsilon}
+            isActive={currentBeat === '2a' && !isTransitioning}
+            highContrast={highContrast}
+          />
+        </ErrorBoundary>
       );
     }
     if (currentBeat === '2b' && selectedImage) {
       return (
-        <Beat2bSplit
-          imageData={selectedImage}
-          epsilon={epsilon}
-          onEpsilonChange={setEpsilon}
-          isActive={currentBeat === '2b' && !isTransitioning}
-        />
+        <ErrorBoundary>
+          <Beat2bSplit
+            imageData={selectedImage}
+            epsilon={epsilon}
+            onEpsilonChange={setEpsilon}
+            isActive={currentBeat === '2b' && !isTransitioning}
+          />
+        </ErrorBoundary>
       );
     }
     if (currentBeat === 3 && selectedImage) {
       return (
-        <Beat3Adversarial
-          standardImageData={selectedImage}
-          robustImageData={robustImage ?? null}
-          epsilon={epsilon}
-          onEpsilonChange={setEpsilon}
-          isActive={currentBeat === 3 && !isTransitioning}
-        />
+        <ErrorBoundary>
+          <Beat3Adversarial
+            standardImageData={selectedImage}
+            robustImageData={robustImage ?? null}
+            epsilon={epsilon}
+            onEpsilonChange={setEpsilon}
+            isActive={currentBeat === 3 && !isTransitioning}
+            highContrast={highContrast}
+          />
+          {robustLoading && (
+            <p className="text-body-sm text-muted text-center mt-2 animate-pulse">
+              Loading robust model...
+            </p>
+          )}
+        </ErrorBoundary>
       );
     }
-    return <BeatPlaceholder beat={currentBeat} />;
+    return null;
   }
 
   return (
@@ -139,42 +173,30 @@ export default function App() {
             <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
           </div>
         )}
-        {/* Settings placeholder */}
-        <button
-          className="mr-4 text-muted hover:text-primary transition-colors"
-          aria-label="Settings"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="10" cy="10" r="3" />
-            <path d="M10 1v2m0 14v2M1 10h2m14 0h2m-2.9-6.4-1.4 1.4M5.3 14.7l-1.4 1.4m0-11.8 1.4 1.4m9.4 9.4 1.4 1.4" />
-          </svg>
-        </button>
+        <Settings
+          highContrast={highContrast}
+          onHighContrastChange={setHighContrast}
+        />
       </header>
 
-      {/* Content area with crossfade */}
-      <div
-        className="flex-1 flex flex-col relative"
-        style={{ transition: 'opacity 200ms ease' }}
-      >
+      {/* Content area */}
+      <div className="flex-1 flex flex-col relative">
         {activeTab === 'demo' ? (
           <>
-            {/* Beat content area */}
             <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
               {renderBeat()}
             </BeatContainer>
 
-            {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
-            {showSliderArea && currentBeat !== '2a' && currentBeat !== '2b' && (
+            {/* Gallery trigger for beats that don't have their own */}
+            {currentBeat !== 0 && standardModel && (
               <div className="beat-slider-area shrink-0 flex items-center justify-end px-6">
-                {/* Gallery trigger */}
-                {standardModel && (
-                  <button
-                    onClick={handleGalleryToggle}
-                    className="text-body-md text-primary hover:text-true-class transition-colors"
-                  >
-                    Explore all images &rarr;
-                  </button>
-                )}
+                <button
+                  onClick={handleGalleryToggle}
+                  className="text-body-md text-primary hover:text-true-class transition-colors"
+                  aria-label="Open image gallery"
+                >
+                  Explore all images &rarr;
+                </button>
               </div>
             )}
           </>
@@ -182,7 +204,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-body-md" style={{ color: '#94a3b8' }}>
+                <p className="text-body-md animate-pulse" style={{ color: '#94a3b8' }}>
                   Loading Lab Mode...
                 </p>
               </div>
@@ -209,6 +231,25 @@ export default function App() {
           isOpen={galleryOpen}
           onToggle={handleGalleryToggle}
         />
+      )}
+
+      {/* 3D Advanced Mode overlay (lazy-loaded) */}
+      {advancedModeOpen && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)' }}>
+              <p className="text-body-md animate-pulse" style={{ color: '#94a3b8' }}>
+                Loading 3D mode...
+              </p>
+            </div>
+          }
+        >
+          <AdvancedMode3D
+            imageId={selectedImageId}
+            isOpen={advancedModeOpen}
+            onClose={() => setAdvancedModeOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

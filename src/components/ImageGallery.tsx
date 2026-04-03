@@ -206,13 +206,16 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
       {/* Grid */}
       <div className="gallery-scroll px-6 pb-6 overflow-y-auto flex-1">
-        <div ref={gridRef} className="gallery-grid">
+        <div ref={gridRef} className="gallery-grid" role="grid" aria-label="MNIST image gallery">
           {sorted.map((img, idx) => {
             const isSelected = img.id === selectedImageId;
             const isFocused = idx === focusIdx;
             return (
               <div
                 key={img.id}
+                role="gridcell"
+                aria-selected={isSelected}
+                aria-label={`Digit ${img.true_class}, epsilon star ${(img.epsilon_star ?? 0).toFixed(2)}`}
                 className={`gallery-thumb ${isSelected ? 'gallery-thumb-selected' : ''} ${isFocused ? 'gallery-thumb-focused' : ''}`}
                 onClick={() => handleSelect(img.id)}
                 onMouseEnter={() => setHoveredId(img.id)}

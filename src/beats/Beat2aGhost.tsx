@@ -8,11 +8,31 @@ import ProbabilityBars from '../components/ProbabilityBars';
 import GaugeMeter from '../components/GaugeMeter';
 import EpsilonSlider from '../components/EpsilonSlider';
 
+function useResponsiveImageSize(): number {
+  const [size, setSize] = useState(() => {
+    if (typeof window === 'undefined') return 480;
+    if (window.innerWidth < 768) return Math.min(window.innerWidth - 32, 480);
+    if (window.innerWidth < 1440) return 360;
+    return 480;
+  });
+  useEffect(() => {
+    const update = () => {
+      if (window.innerWidth < 768) setSize(Math.min(window.innerWidth - 32, 480));
+      else if (window.innerWidth < 1440) setSize(360);
+      else setSize(480);
+    };
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return size;
+}
+
 interface Beat2aProps {
   imageData: ImageData;
   epsilon: number;
   onEpsilonChange: (eps: number) => void;
   isActive: boolean;
+  highContrast?: boolean;
 }
 
 export default function Beat2aGhost({
@@ -20,8 +40,11 @@ export default function Beat2aGhost({
   epsilon,
   onEpsilonChange,
   isActive,
+  highContrast = false,
 }: Beat2aProps) {
   const [signMapVisible, setSignMapVisible] = useState(false);
+
+  const imageSize = useResponsiveImageSize();
 
   const { probs, margin, flipped, attackStrength, initialMargin } =
     useImageState(imageData, epsilon);
@@ -70,8 +93,8 @@ export default function Beat2aGhost({
       <div
         className="relative"
         style={{
-          width: 480,
-          height: 480,
+          width: imageSize,
+          height: imageSize,
         }}
       >
         {/* MNIST canvas (behind) */}
@@ -80,7 +103,7 @@ export default function Beat2aGhost({
           signMap={imageData.loss_grad_sign}
           epsilon={epsilon}
           dimmed={signMapVisible}
-          size={480}
+          size={imageSize}
           className="absolute inset-0"
         />
 
@@ -97,8 +120,8 @@ export default function Beat2aGhost({
             signMap={imageData.loss_grad_sign}
             deadPixelMask={imageData.dead_pixel_mask}
             mode="uniform"
-            size={480}
-            highContrast={false}
+            size={imageSize}
+            highContrast={highContrast}
           />
         </div>
       </div>
