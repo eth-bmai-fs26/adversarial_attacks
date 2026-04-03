@@ -88,4 +88,14 @@
     .text-body-sm { font-size: 11.2px; }
     .text-body-xs { font-size: 8.8px; }
   }
+
+  @keyframes runner-pulse {
+    0% { opacity: 1; transform: scaleY(1); }
+    50% { opacity: 0.5; transform: scaleY(1.05); }
+    100% { opacity: 1; transform: scaleY(1); }
+  }
+
+  .animate-runner-pulse {
+    animation: runner-pulse 200ms ease-out;
+  }
 }
