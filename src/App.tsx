@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
+import Beat0ColdOpen from './beats/Beat0ColdOpen';
+import Beat1Crime from './beats/Beat1Crime';
+import Beat2aGhost from './beats/Beat2aGhost';
+import Beat2bSplit from './beats/Beat2bSplit';
 import Beat3Adversarial from './beats/Beat3Adversarial';
 import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
-import type { Beat, ImageData, ModelData } from './types';
+import type { Beat, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -26,34 +30,76 @@ export default function App() {
   const {
     currentBeat,
     goToBeat,
+    goNext,
     isTransitioning,
   } = useBeatNavigation();
 
+  const [standardModel, setStandardModel] = useState<ModelData | null>(null);
+  const [robustModel, setRobustModel] = useState<ModelData | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState(0);
   const [epsilon, setEpsilon] = useState(0);
-  const [selectedImageId] = useState(0);
-  const [standardData, setStandardData] = useState<ModelData | null>(null);
-  const [robustData, setRobustData] = useState<ModelData | null>(null);
 
-  // Load model data
+  // Load model data on mount
   useEffect(() => {
-    loadStandardModel().then(setStandardData).catch(console.error);
-    loadRobustModel().then(setRobustData).catch(console.error);
+    loadStandardModel().then(setStandardModel).catch(console.error);
+    loadRobustModel().then(setRobustModel).catch(console.error);
   }, []);
 
-  const standardImage: ImageData | undefined = standardData
-    ? getImageById(standardData, selectedImageId)
-    : undefined;
-  const robustImage: ImageData | undefined = robustData
-    ? getImageById(robustData, selectedImageId)
-    : undefined;
+  // Reset epsilon when navigating to beat 0 (Escape key reset)
+  useEffect(() => {
+    if (currentBeat === 0) {
+      setEpsilon(0);
+    }
+  }, [currentBeat]);
 
-  const showSliderArea = currentBeat !== 0;
+  const selectedImage = standardModel
+    ? getImageById(standardModel, selectedImageId) ?? standardModel.images[0]
+    : null;
 
-  const renderBeat = () => {
-    if (currentBeat === 3 && standardImage) {
+  const robustImage = robustModel
+    ? getImageById(robustModel, selectedImageId) ?? robustModel.images[0]
+    : null;
+
+  const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
+
+  function renderBeat() {
+    if (currentBeat === 0) {
+      return <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />;
+    }
+    if (currentBeat === 1 && selectedImage) {
+      return (
+        <Beat1Crime
+          imageData={selectedImage}
+          isActive={currentBeat === 1 && !isTransitioning}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+        />
+      );
+    }
+    if (currentBeat === '2a' && selectedImage) {
+      return (
+        <Beat2aGhost
+          imageData={selectedImage}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === '2a' && !isTransitioning}
+        />
+      );
+    }
+    if (currentBeat === '2b' && selectedImage) {
+      return (
+        <Beat2bSplit
+          imageData={selectedImage}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === '2b' && !isTransitioning}
+        />
+      );
+    }
+    if (currentBeat === 3 && selectedImage) {
       return (
         <Beat3Adversarial
-          standardImageData={standardImage}
+          standardImageData={selectedImage}
           robustImageData={robustImage ?? null}
           epsilon={epsilon}
           onEpsilonChange={setEpsilon}
@@ -62,7 +108,7 @@ export default function App() {
       );
     }
     return <BeatPlaceholder beat={currentBeat} />;
-  };
+  }
 
   return (
     <div className="min-h-screen flex flex-col no-select">
@@ -86,8 +132,8 @@ export default function App() {
         {renderBeat()}
       </BeatContainer>
 
-      {/* Epsilon slider area — reserved for Beats 1-3 */}
-      {showSliderArea && (
+      {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
+      {showSliderArea && currentBeat !== '2a' && currentBeat !== '2b' && (
         <div className="beat-slider-area shrink-0" />
       )}
 
