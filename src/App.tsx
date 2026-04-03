@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
+import TabBar from './components/TabBar';
 import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import Beat1Crime from './beats/Beat1Crime';
 import Beat2aGhost from './beats/Beat2aGhost';
@@ -10,6 +11,8 @@ import Beat3Adversarial from './beats/Beat3Adversarial';
 import ImageGallery from './components/ImageGallery';
 import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
 import type { Beat, ModelData } from './types';
+
+const LabMode = lazy(() => import('./beats/LabMode'));
 
 const BEAT_LABELS: Record<string, string> = {
   '0': 'Beat 0: Panda Cold Open',
@@ -35,11 +38,16 @@ export default function App() {
     isTransitioning,
   } = useBeatNavigation();
 
+  const [activeTab, setActiveTab] = useState<'demo' | 'lab'>('demo');
   const [standardModel, setStandardModel] = useState<ModelData | null>(null);
   const [robustModel, setRobustModel] = useState<ModelData | null>(null);
   const [selectedImageId, setSelectedImageId] = useState(0);
   const [epsilon, setEpsilon] = useState(0);
   const [galleryOpen, setGalleryOpen] = useState(false);
+
+  const handleTabChange = useCallback((tab: 'demo' | 'lab') => {
+    setActiveTab(tab);
+  }, []);
 
   // Load model data on mount
   useEffect(() => {
@@ -71,7 +79,7 @@ export default function App() {
     setGalleryOpen(prev => !prev);
   }, []);
 
-  const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
+  const showSliderArea = activeTab === 'demo' && currentBeat !== 0 && currentBeat !== 1;
 
   function renderBeat() {
     if (currentBeat === 0) {
@@ -124,11 +132,16 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col no-select">
       {/* Header — 40px (32px compact), hidden on mobile */}
-      <header className="beat-header shrink-0 flex items-center justify-center relative">
-        <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
+      <header className="beat-header shrink-0 flex items-center justify-between relative">
+        <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+        {activeTab === 'demo' && (
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
+          </div>
+        )}
         {/* Settings placeholder */}
         <button
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
+          className="mr-4 text-muted hover:text-primary transition-colors"
           aria-label="Settings"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -138,30 +151,54 @@ export default function App() {
         </button>
       </header>
 
-      {/* Beat content area */}
-      <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
-        {renderBeat()}
-      </BeatContainer>
+      {/* Content area with crossfade */}
+      <div
+        className="flex-1 flex flex-col relative"
+        style={{ transition: 'opacity 200ms ease' }}
+      >
+        {activeTab === 'demo' ? (
+          <>
+            {/* Beat content area */}
+            <BeatContainer currentBeat={currentBeat} isTransitioning={isTransitioning}>
+              {renderBeat()}
+            </BeatContainer>
 
-      {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
-      {showSliderArea && currentBeat !== '2a' && currentBeat !== '2b' && (
-        <div className="beat-slider-area shrink-0 flex items-center justify-end px-6">
-          {/* Gallery trigger */}
-          {standardModel && (
-            <button
-              onClick={handleGalleryToggle}
-              className="text-body-md text-primary hover:text-true-class transition-colors"
-            >
-              Explore all images &rarr;
-            </button>
-          )}
+            {/* Epsilon slider area — reserved for beats that don't embed their own slider */}
+            {showSliderArea && currentBeat !== '2a' && currentBeat !== '2b' && (
+              <div className="beat-slider-area shrink-0 flex items-center justify-end px-6">
+                {/* Gallery trigger */}
+                {standardModel && (
+                  <button
+                    onClick={handleGalleryToggle}
+                    className="text-body-md text-primary hover:text-true-class transition-colors"
+                  >
+                    Explore all images &rarr;
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-body-md" style={{ color: '#94a3b8' }}>
+                  Loading Lab Mode...
+                </p>
+              </div>
+            }
+          >
+            <LabMode isActive={activeTab === 'lab'} />
+          </Suspense>
+        )}
+      </div>
+
+      {/* Mobile dots — shown only on <768px, demo tab only */}
+      {activeTab === 'demo' && (
+        <div className="beat-dots-mobile shrink-0 flex items-center justify-center">
+          <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
         </div>
       )}
-
-      {/* Mobile dots — shown only on <768px */}
-      <div className="beat-dots-mobile shrink-0 flex items-center justify-center">
-        <BeatDots currentBeat={currentBeat} onBeatClick={goToBeat} />
-      </div>
 
       {/* Image Gallery overlay */}
       {standardModel && (

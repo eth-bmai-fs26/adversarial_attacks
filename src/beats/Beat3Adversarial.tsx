@@ -64,10 +64,6 @@ export default function Beat3Adversarial({
   const dormantPixels = 784 - activePixels;
 
   // Shatter label
-  const currentClass = flipped
-    ? (activeImageData.adversarial_class ?? activeImageData.true_class)
-    : activeImageData.true_class;
-
   const shatterTarget = useMemo(() => {
     if (!flipped) return null;
     const advClass = activeImageData.adversarial_class;
