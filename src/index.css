@@ -1,0 +1,91 @@
+@import '@fontsource/syne/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/dm-sans/400.css';
+@import '@fontsource/dm-sans/700.css';
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply bg-canvas text-primary min-h-screen;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+@layer components {
+  .text-label-hero {
+    font-family: 'Syne', system-ui, sans-serif;
+    font-size: 52px;
+    font-weight: 700;
+  }
+
+  .text-label-main {
+    font-family: 'Syne', system-ui, sans-serif;
+    font-size: 44px;
+    font-weight: 700;
+  }
+
+  .text-mono-lg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  .text-mono-md {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 400;
+  }
+
+  .text-mono-sm {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  .text-body-lg {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  .text-body-md {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  .text-body-sm {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .text-body-xs {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  /* Compact breakpoint: scale fonts × 0.8 */
+  @media (min-width: 768px) and (max-width: 1439px) {
+    .text-label-hero { font-size: 41.6px; }
+    .text-label-main { font-size: 35.2px; }
+    .text-mono-lg { font-size: 22.4px; }
+    .text-mono-md { font-size: 16px; }
+    .text-mono-sm { font-size: 14.4px; }
+    .text-body-lg { font-size: 14.4px; }
+    .text-body-md { font-size: 12.8px; }
+    .text-body-sm { font-size: 11.2px; }
+    .text-body-xs { font-size: 8.8px; }
+  }
+}

@@ -1,0 +1,13 @@
+:root {
+  --color-bg: #0f172a;
+  --color-tile-positive: #fbbf24;
+  --color-tile-negative: #22d3ee;
+  --color-true-class: #38bdf8;
+  --color-adversarial: #f472b6;
+  --color-success: #34d399;
+  --color-tile-dormant: #131c2e;
+  --color-tile-gap: #0a0f1a;
+  --color-text-primary: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-slider-flash: #ffffff;
+}
