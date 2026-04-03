@@ -8,6 +8,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes shatter-frag {
+  from {
+    transform: var(--from-transform);
+    opacity: var(--from-opacity);
+  }
+  to {
+    transform: var(--to-transform);
+    opacity: var(--to-opacity);
+  }
+}
+
 @layer base {
   html, body, #root {
     @apply bg-canvas text-primary min-h-screen;
