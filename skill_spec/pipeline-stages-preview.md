@@ -1,6 +1,6 @@
 # Pipeline Stages — Reference
 
-Phase 1 (multi-agent discussion) is handled by `scripts/orchestrate.sh`. This document covers Phases 2 and 3.
+Phase 1 (multi-agent discussion) is handled by `orchestrate.sh`. This document covers Phases 2 and 3.
 
 ---
 
@@ -33,34 +33,71 @@ One paragraph: what this is, who it is for, what insight it delivers.
 - Input parameters with valid ranges and defaults
 - Computed outputs with formulas
 - Edge cases and how to handle each one
+- Numerical precision: what data types, what thresholds for degenerate cases
+
+## Narrative Arc (Beat Structure)
+
+Structure the visualization as a sequence of beats:
+
+### Beat 0 — The Hook (5-10s, non-interactive)
+What dramatic visual or fact creates initial shock or curiosity?
+- Exact timed sequence (t=0s, t=1.5s, t=3s, ...)
+- Use JS setTimeout — NOT CSS animation-delay chains (must be skippable/resettable)
+- "Skip intro" link for professors who've seen it
+
+### Beat 1 — The Exploration (30-60s, one primary interaction)
+The main interactive beat. One slider, one drag, one build-up.
+- What is the primary control? What range? What default?
+- What changes as the control moves?
+- Where is the dramatic moment (threshold, flip, convergence)?
+
+### Beat 2 — The Reveal (20-30s)
+Show the hidden structure underneath.
+- What overlay/visualization materializes?
+- What is the trigger (keyboard key + button)?
+- Animation timing: dim → reveal → stabilize
+
+### Beat 3 — The Comparison (20-30s)
+Method A vs Method B, or baseline vs modified.
+- Split view with draggable divider? Full-image toggle?
+- Status badges showing which method succeeds/fails
+- What insight does the comparison teach?
+
+### Beat 4 — The Implication (20-30s)
+Toggle showing the consequence or defense.
+- What changes between the two states?
+- What does the professor say?
+- How does this set up the next lecture topic?
+
+### Post-Lecture Modes
+- Gallery/browser for exploring variations
+- Lab mode for student-driven exploration (live computation)
 
 ## Layout & Composition
 
 Describe the spatial layout precisely:
-- Overall structure (e.g., "Canvas occupies left 65%, control panel right 35%")
+- Overall structure
 - Visual hierarchy — what the eye sees first, second, third
 - Minimum useful viewport size
-- Padding, margins, gaps between sections
 
 Recommended layout patterns:
-- **3D Scene + Sidebar**: Three.js canvas 65-70%, controls + info panels 30-35% on right. The 3D scene is the hero — it should dominate the viewport.
-- **3D Scene + Overlay**: Full-viewport 3D scene with semi-transparent control overlay in a corner. Best for immersive demos.
-- **3D Scene + 2D Panel**: 3D scene on left, synchronized 2D projection/cross-section on right. Bridges 3D and 2D understanding.
-- **Canvas + Sidebar**: Main 2D viz 65-70%, controls 30-35% on right (for 2D-only concepts)
-- **Canvas + Bottom Bar**: Full-width viz, control strip below (64px height)
+- **Beat-Based + Bottom Slider**: Full-screen beats with a persistent control bar at the bottom. The slider carries state across beats. Beat dots in the header.
+- **3D Scene + Sidebar**: Three.js canvas 65-70%, controls + info panels 30-35%
+- **3D Scene + Overlay**: Full-viewport 3D with semi-transparent controls in a corner
+- **3D Scene + 2D Panel**: 3D left, synchronized 2D right
+- **Canvas + Bottom Bar**: Full-width viz, control strip below (64px)
 - **Split View**: Two panels 50/50 for comparison modes
-- **Stacked**: Viz on top, data/info below (good for mobile)
 
 ## 3D Scene Specification (if applicable)
 
-If the visualization uses Three.js / React Three Fiber, specify:
-- **Camera**: type (perspective/orthographic), fov, default position, lookAt target
-- **Orbit controls**: enabled, auto-rotate speed, min/max distance, damping
-- **Lighting**: types, positions, colors, intensities, shadows
-- **Ground plane**: grid style, size, position
-- **Post-processing**: bloom, anti-aliasing, ambient occlusion
-- **Key 3D objects**: geometry type, material properties, emissive values
-- **Reset view**: default camera position for the "Reset View" button
+If the visualization uses Three.js / React Three Fiber:
+- Camera: type, fov, default position, lookAt target
+- Orbit controls: auto-rotate speed, min/max distance, damping
+- Lighting: types, positions, colors, intensities, shadows
+- Ground plane: grid style, size, position
+- Post-processing: bloom threshold/intensity, anti-aliasing (SMAA, not FXAA)
+- Key 3D objects: geometry, material properties, emissive values
+- Camera-angle-triggered captions: what text appears at what viewing angle
 
 ## Components
 
@@ -73,163 +110,268 @@ List every UI element with full detail:
 ## Controls
 
 For each control, specify ALL of:
-- Type: slider / toggle / dropdown / drag-handle / button / number-input
-- Label text (descriptive, e.g., "Number of rectangles (n)" not just "n")
+- Type: slider / toggle / dropdown / drag-handle / button / number-input / keyboard-key
+- Label text (descriptive)
 - Range or options
 - Default value
-- Step size (for sliders)
-- What it affects (be specific about which visual element changes)
+- Step size
+- What it affects
 - Whether change triggers animation or is instant
+- Magnetic snap zones (if applicable)
+
+## Keyboard Shortcuts
+
+| Key | Context | Action |
+|-----|---------|--------|
+| ←/→ | Global | Navigate beats |
+| 1-4 | Global | Jump to specific beat |
+| Escape | Global | Reset to Beat 0 / close overlay |
+| Space/Enter | Beat 0 | Advance from cold open |
+| R | Reveal beat | Toggle overlay |
+| G | Comparison beat | Toggle blink comparison |
 
 ## Animations
-- What animates and what triggers it (slider change, button press, page load)
-- Duration in ms and easing function (e.g., "300ms ease-out")
+- What animates, what triggers it, duration in ms, easing function
 - Whether continuous or triggered
-- Frame rate considerations for heavy computations
+- Label shatter spec (if used): fragment count, duration, trigger condition
+- Transition between beats: duration, style (crossfade, slide)
 
 ## Visual Design
 
 ### Color Palette
-Specify exact hex values. Default to the Dark Lecture palette unless the concept calls for something else:
+Exact hex values. Default to Dark Lecture palette:
 - Background: #0f172a
-- Surface/panels: #1e293b
-- Primary accent: #38bdf8
-- Secondary accent: #f472b6
-- Tertiary accent: #34d399
-- Warning/highlight: #fbbf24
+- Primary safe: #38bdf8 (sky blue)
+- Danger: #f472b6 (pink)
+- Success: #34d399 (emerald)
+- Warm accent: #fbbf24 (amber)
+- Cool accent: #22d3ee (cyan)
 - Text primary: #f1f5f9
 - Text muted: #94a3b8
-- Grid/axes: #334155
 
 ### Typography
-- Title: font family, weight, size (minimum 32px)
-- Axis labels: font family, size (minimum 16px)
-- Value displays: font family, size (minimum 20px, monospace recommended)
-- Control labels: font family, size (minimum 14px)
-- Load fonts via @import from Google Fonts
+- Display: font, weight, size (minimum 44px)
+- Numbers: font, size (minimum 20px, monospace)
+- Body: font, size (minimum 14px)
+- Self-hosted via @fontsource (no CDN dependency)
 
 ### Visual Effects
-- Grid lines: style, opacity, spacing
-- Gradients, glows, or shadows
-- Hover states for interactive elements
-- Active/drag states
+- Glow/shadow specifications with exact CSS or Three.js values
+- High-contrast projector mode: what changes (wider gaps, no glow, solid blocks)
+- Canvas rendering at 2× for Retina
+
+## Responsive Breakpoints
+Three tiers:
+- Default (≥1440px): full design
+- Compact (768-1439px): reduced sizes, fonts ×0.8
+- Mobile (<768px): stacked layout, touch-friendly controls
+
+## Data Schema (for precomputed visualizations)
+Exact JSON structure with field names, types, and sizes.
+Per-item fields, array dimensions, total size budget.
+
+## Precomputation Pipeline (if applicable)
+- What model/algorithm generates the data
+- What quantities to store per item
+- How many items (images, data points, etc.)
+- Output file paths and size targets
+- Numerical precision requirements
+
+## Scope Boundaries
+What is explicitly NOT included. This prevents scope creep.
+
+## Unresolved Tensions
+Remaining tradeoffs the implementer should be aware of.
+Risks that need prototyping to resolve.
 
 ## Demo Script
-A step-by-step 2-minute walkthrough:
-1. "Here we see..." — describe starting state and what is visible
+A step-by-step 2-3 minute walkthrough:
+1. "Here we see..." — starting state
 2. "Now watch what happens when I..." — first interaction
-3. "Notice how..." — point out the key insight
-4. "And if we push it further..." — edge case or advanced view
-
-## Technical Notes
-- Recommended framework: React Three Fiber (.jsx) for 3D concepts, React (.jsx) for 2D, HTML for simpler demos
-- Key libraries: `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing` for 3D; d3, recharts, plotly for 2D; mathjs for computation
-- 3D: camera setup, orbit control constraints, lighting rig, post-processing pipeline
-- Performance: estimated vertex/object count, instancing strategy, target frame rate
-- State management approach
+3. "Notice how..." — the key insight
+4. "And look at this..." — the reveal/comparison
+5. "What does this mean?" — the implication
 ```
 
 ### Key Principles
 
-- **Be exact about numbers**: "slider for n, range 1–200, default 10, step 1" not "a slider for n"
-- **Be exact about positions**: "left 65% of viewport, 24px padding" not "on the left"
-- **Name colors by hex**: "#38bdf8 (sky blue), 2px stroke" not "a blue line"
-- **Describe animations**: "300ms ease-out on slider change" not "it animates"
-- **Anticipate edge cases**: what happens at min/max values, zero, negative
+- **Be exact about numbers**: "slider for ε, range [0, 0.35], default 0, step 0.005, coarse step 0.05" not "a slider for ε"
+- **Be exact about positions**: "full-width bottom bar, 64px tall, 32px padding each side" not "at the bottom"
+- **Name colors by hex**: "`#38bdf8` (sky blue), 2px stroke" not "a blue line"
+- **Describe animations**: "300ms ease-out on release, 500ms fade-in with 100ms delay" not "it animates"
+- **Anticipate edge cases**: what happens at min/max, at the threshold, when data is missing
+- **Specify keyboard shortcuts**: every interactive action should have a keyboard binding for wireless clickers
 
 ---
 
 ## Phase 3: Implementation
 
 **Input**: The specification document from Phase 2.
-**Output**: A working `.jsx` or `.html` file saved to `/mnt/user-data/outputs/[topic]-viz.jsx` (or `.html`).
+**Output**: A working application — either a multi-file React project or a single `.jsx`/`.html` file.
+
+### Architecture Decision
+
+For complex visualizations (3+ beats, multiple components, precomputed data):
+
+**Multi-file React project** with tiered issue decomposition:
+```
+Tier 0 (parallel, no deps):
+  - Precomputation pipeline (Python)
+  - Project scaffold (React + Vite + Tailwind + fonts + types)
+
+Tier 1 (parallel, after scaffold):
+  - Each reusable component as a separate issue
+  - Each component buildable with mock data (no data pipeline dependency)
+
+Tier 2 (parallel, after Tier 1 + data):
+  - Each beat/view composes Tier 1 components
+  - Each beat is a separate issue with explicit component dependencies
+  - Independent tracks (Lab Mode, 3D Mode) can start as soon as their deps are ready
+
+Tier 3 (after all):
+  - Integration, responsive audit, accessibility, performance optimization
+```
+
+Each issue gets a detailed prompt in `issue-prompts/XX-name.md` containing:
+- Goal (one sentence)
+- Dependencies (which issues must complete first)
+- Context (why this component exists in the narrative)
+- Exact visual spec (sizes, colors, timings)
+- Interface (props, events, state)
+- Mock data for standalone development
+- File paths for deliverables
+- Verification checklist
+
+A `CLAUDE.md` file provides shared context for all agents: architecture overview, design tokens, data schema, conventions, dependency graph, and "what NOT to do" guardrails.
+
+For simpler visualizations (single concept, few controls):
+
+**Single-file React (.jsx)** or **HTML (.html)** — all styles inline, no build step.
 
 ### Framework Decision
 
-- **React + React Three Fiber (.jsx)** when: the concept is inherently spatial — surfaces, manifolds, loss landscapes, 3D transformations, vector fields, decision boundaries in feature space, data point clouds. **This should be the default for most ML and linear algebra visualizations.** Use `@react-three/fiber` for the 3D scene and `@react-three/drei` for helpers (OrbitControls, Grid, Text, etc.). Use `@react-three/postprocessing` for visual effects (bloom, SMAA).
-- **React (.jsx)** when: 2D-only concepts with multiple interactive controls, complex state, real-time computation, recharts/d3 integration needed.
-- **HTML (.html)** when: single canvas animation, minimal controls, CSS-only animation, simpler interaction model.
-
-**Default to 3D (React Three Fiber) unless the concept is fundamentally 1D/2D** (function plots, distributions, histograms). When in doubt, use 3D — it always looks more impressive and can include a 2D panel as a secondary view.
+- **React + Vite + Tailwind (multi-file)**: Complex visualizations with beats, precomputed data, multiple views. This is the default for production-quality lecture tools.
+- **React + React Three Fiber (.jsx)**: 3D-primary concepts — surfaces, manifolds, loss landscapes. Use `@react-three/fiber` + `@react-three/drei` + `@react-three/postprocessing`.
+- **React (.jsx)**: 2D-only concepts with multiple controls and complex state.
+- **HTML (.html)**: Single-canvas demos with minimal controls.
 
 ### Code Quality Requirements
 
-- Single file — all styles inline or in a style block, no separate CSS
+**For multi-file projects:**
+- TypeScript for all source files
 - React hooks for state (useState, useEffect, useMemo, useCallback)
+- Custom hooks for shared logic (e.g., `useImageState` for derived computations)
+- `React.memo` with identity checks on array props for canvas components
+- Lazy-load heavy dependencies: `const LabMode = lazy(() => import('./LabMode'))`
+- Error boundaries around each major section
+- All design tokens from CLAUDE.md — never hardcode a color or font that's in the token system
+
+**For single-file projects:**
+- All styles inline or in a style block
 - Memoize expensive math with useMemo
-- requestAnimationFrame for continuous animations (never setInterval)
+- requestAnimationFrame for continuous animations
 - Default export, no required props
-- All values from the spec (colors, sizes, ranges) hardcoded exactly as specified
 
-### 3D Implementation Requirements (when using React Three Fiber)
+### Canvas Rendering Conventions
 
-- Use `<Canvas>` from `@react-three/fiber` as the main 3D container
-- Use `<OrbitControls>` from `@react-three/drei` with `enableDamping`, `autoRotate` (slow), and constrained zoom range
-- Always include a "Reset View" button that smoothly returns the camera to its default position
-- Use `<Grid>` or `GridHelper` for spatial reference on the ground plane
-- Use `MeshPhysicalMaterial` for surfaces (supports transparency, roughness, emissive glow)
-- Use `InstancedMesh` for repeated objects (data points) — never create >50 individual mesh components
-- Use `BufferGeometry` with typed arrays for custom surfaces
-- Add `<EffectComposer>` with `<Bloom>` for emissive glow on key elements (data points, trails, highlighted objects)
-- Add `<SMAA>` for anti-aliasing
-- Use `useFrame` hook for per-frame animations (camera lerp, object movement), not `requestAnimationFrame`
-- Set `<Canvas shadows camera={{ fov: 50, position: [3, 3, 3] }}>` as defaults
-- Lighting: hemisphere light (sky + ground) + one directional light with shadows
-- Responsive: use `style={{ width: '100%', height: '100%' }}` on the Canvas and let the parent div control sizing
-- Text in 3D scenes: use `<Text>` from Drei (SDF text rendering) or `<Html>` for DOM overlays
-- Performance: target 60fps, use `<Stats>` from Drei during development, remove in production
+- **Always render at 2× for Retina**: `canvas.width = cssSize * 2`, CSS `width = cssSize`
+- **Nearest-neighbor upscaling** for pixel-art-like data (MNIST, heatmaps): crisp blocks, no blur. Use `image-rendering: pixelated` or render each pixel as a filled rectangle at full resolution.
+- **Color mapping**: don't use pure black (`#000000`) as minimum — use the background color (e.g., `#0f172a`) so the visualization blends with the theme
+- **Performance target**: <2ms per canvas redraw during slider drag. 784 pixels of math is trivial. Profile to verify.
 
-### Math Rendering
+### 3D Implementation Requirements
 
-- Simple labels: Unicode symbols (×, ÷, √, π, Σ, ∫, ∂, ∇, θ, α, β, λ, ε, δ)
-- Subscripts/superscripts: SVG text with tspan, or HTML sup/sub tags
-- No heavy LaTeX renderers unless the spec explicitly requires them
+- `<Canvas>` from `@react-three/fiber` as the 3D container
+- `<OrbitControls>` from Drei with `enableDamping`, `autoRotate`, constrained zoom
+- Always include "Reset View" button with smooth camera lerp
+- `<Grid>` or `GridHelper` for spatial reference
+- `MeshPhysicalMaterial` for surfaces (transparency, roughness, emissive)
+- `InstancedMesh` for >50 identical objects
+- `BufferGeometry` with typed arrays for custom surfaces
+- `<EffectComposer>` with `<Bloom>` for emissive glow + `<SMAA>` for anti-aliasing
+- `useFrame` for per-frame animations (not `requestAnimationFrame`)
+- Lazy-load: do NOT import R3F or Three.js at the top level
+- Target 60fps on a 100×100 mesh
 
-### Visual Execution
+### Responsive Requirements
 
-- Follow the spec's color palette exactly (copy hex values)
-- Load fonts from Google Fonts via @import
-- CSS transitions for smooth state changes
-- Subtle grid lines at low opacity for mathematical plots
-- Large readable labels (minimum 16px labels, 24px+ titles)
-- All sliders show their current value prominently next to them
+Every component must work at three breakpoints:
+- **Default** (≥1440px): Full design — largest images, all visual details
+- **Compact** (768-1439px): Reduced sizes, fonts ×0.8, stacked bars. This is the **most common lecture laptop resolution** (1366×768).
+- **Mobile** (<768px): Full-width stacked layout, touch-friendly controls (larger touch targets), swipe for navigation
 
-### Interactivity
+### Accessibility Requirements
 
-- Use pointer events (not mouse events) for drag interactions
-- Visual feedback on hover/active (subtle glow, color shift, cursor change)
-- Include a "Reset" button to return to defaults
-- Constrain draggable points to valid mathematical regions
-- Debounce expensive recomputations if needed (but prefer keeping it real-time)
+- `aria-label` on all interactive elements
+- `role="slider"` with `aria-valuemin`/`aria-valuemax`/`aria-valuenow` for sliders
+- Visible focus rings (2px primary color outline)
+- Focus trapped in overlays
+- WCAG AA contrast (4.5:1) for all text
+- `prefers-reduced-motion`: disable all animations, use instant state changes
+- Color vision deficiency safe: test amber/cyan pair, blue/pink pair under deuteranopia simulation
 
-### Lecture-Friendly Features
+### Lecture-Friendly Requirements
 
 - Dark mode default (designed for projectors)
-- Text large enough to read from 10 meters
-- Consider step-forward / step-back mode for guided demos
-- Bold, updating value displays help the back row follow
-- Descriptive control labels: "Number of rectangles (n)" not "n"
+- Text large enough to read from 10-15 meters (minimum 20px for critical numbers)
+- **High-contrast projector mode**: toggle that drops glow effects, increases gaps/borders, uses solid blocks. This is essential — glow effects that look beautiful on a Retina laptop collapse into colored mud on a 1080p projector at 15m.
+- Keyboard-first: every action accessible via keyboard (professors use wireless clickers that send arrow keys)
+- Self-hosted fonts via `@fontsource` (lecture halls often have flaky WiFi)
+- Step-forward / step-back mode for guided demos
+
+### Precomputation Pipeline Requirements (when applicable)
+
+- Python + PyTorch (or TensorFlow) for model-based precomputation
+- Output: JSON files in `public/data/`, loaded by the frontend via `fetch()`
+- Round floats to 4 decimal places to reduce size
+- Size budget: <1MB gzipped for core data, <5MB for extended data (3D surfaces)
+- Store gradients, logits, and derived quantities at discrete parameter steps (e.g., 100 ε values)
+- The frontend interpolates between grid points for smooth slider interaction
+- Handle edge cases in precomputation: sign(0), clipping asymmetry, numerical precision
+- Print a verification summary after generation (accuracy, size, ranges, statistics)
 
 ### Pre-Delivery Checklist
 
 Before presenting to the user, verify:
-- [ ] Renders without errors
-- [ ] All controls work and visibly affect the visualization
-- [ ] Labels are readable at distance (large, high contrast)
-- [ ] The "aha moment" from the spec comes through in the interaction
-- [ ] Math is correct (double-check formulas against the spec)
-- [ ] Edge cases handled (n=0, n=1, division by zero, empty states)
-- [ ] Animations run smoothly
-- [ ] Reset button works
-- [ ] Color palette matches the spec
 
-**Additional checks for 3D visualizations:**
-- [ ] Orbit controls work (rotate, zoom, pan) with smooth damping
-- [ ] Auto-rotate is on when idle (subtle, slow)
-- [ ] "Reset View" button returns camera to default angle smoothly
-- [ ] Lighting reveals surface structure (not flat-looking)
-- [ ] Emissive glow / bloom on key elements (data points, trails)
-- [ ] Ground plane grid is visible for spatial reference
-- [ ] Scene looks good from multiple camera angles (not just the default)
-- [ ] Performance is 60fps (check with Stats component)
-- [ ] Transparent surfaces are visible from both sides (`side: DoubleSide`)
+**Core functionality:**
+- [ ] Renders without errors in Chrome, Firefox, Safari
+- [ ] All controls work and visibly affect the visualization
+- [ ] The "aha moment" comes through in the interaction
+- [ ] Math is correct (formulas match the spec)
+- [ ] Edge cases handled (min/max, zero, empty, missing data)
+- [ ] Animations run smoothly at 60fps
+- [ ] Error boundaries catch crashes without killing the app
+
+**Visual quality:**
+- [ ] Color palette matches the spec exactly
+- [ ] Labels readable at distance (large, high contrast)
+- [ ] Canvas renders at 2× for Retina sharpness
+- [ ] The signature visual is genuinely striking
+
+**Lecture readiness:**
+- [ ] Keyboard shortcuts all work without conflicts
+- [ ] High-contrast projector mode toggle exists and works
+- [ ] Fonts load without FOUT (self-hosted, not CDN)
+- [ ] Core demo runs with zero network requests after initial load
+- [ ] Production build is <200KB gzipped for the main chunk
+
+**3D-specific (if applicable):**
+- [ ] Orbit controls work with smooth damping
+- [ ] Auto-rotate when idle
+- [ ] "Reset View" returns camera smoothly
+- [ ] Lighting reveals surface structure
+- [ ] Bloom on key elements only (not everything)
+- [ ] Scene looks good from multiple angles
+- [ ] 60fps on a 100×100 mesh
+- [ ] R3F and Three.js are lazy-loaded
+
+**Responsive:**
+- [ ] Works at 1366×768 (most common lecture laptop)
+- [ ] Works at 375px width (mobile)
+- [ ] Touch interactions work (drag, swipe)
+
+**Accessibility:**
+- [ ] Focus rings visible on all interactive elements
+- [ ] `prefers-reduced-motion` respected
+- [ ] Color-safe under deuteranopia simulation

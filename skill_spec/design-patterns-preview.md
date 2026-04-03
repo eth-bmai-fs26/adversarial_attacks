@@ -2,11 +2,27 @@
 
 A library of proven patterns for interactive math visualizations, organized by topic. Use these as starting points and inspiration — don't copy them rigidly, but understand why they work and adapt them to the specific concept.
 
-## Visual Ambition — Default to Wow
+## Philosophy — What Makes a Great Lecture Visualization
 
-**Every visualization should aim to be visually stunning and memorable.** A lecture demo that looks like a homework widget fails even if the math is correct. The goal is to make students think "I want to play with that" the moment it appears on the projector.
+### Visual ambition: Default to Wow
+Every visualization should aim to be **visually stunning and memorable**. A lecture demo that looks like a homework widget fails even if the math is correct. The goal is to make students think "I want to play with that" the moment it appears on the projector.
 
-**Default to 3D when the concept is inherently spatial.** Surfaces, manifolds, vector fields, loss landscapes, decision boundaries in feature space, transformations — these are 3D concepts flattened into 2D diagrams in textbooks. Our job is to unflatten them. Use Three.js / React Three Fiber with orbit controls so the instructor can rotate the view live. 3D with rotation is always more engaging than a static 2D projection — it lets the audience see the full geometry.
+### Tell a story, not a dashboard
+The best visualizations are **narrative arcs**, not control panels. They have a beginning (hook), a middle (exploration), and a climax (the "aha" moment). Structure the visualization as a sequence of "beats" (like slides) with a story thread — not as a Swiss Army knife with 13 toggles.
+
+A dashboard says "here are some tools." A story says "watch this... now try this... see why?" The professor is a narrator, not a console operator.
+
+### One signature moment
+Every visualization needs **one visual beat so striking it becomes the thing people remember**. This is the "screenshot moment" — a single still composition that would work as a poster. Design backwards from this moment: what visual, at what state, would make someone take a photo of the projector?
+
+### Mathematical honesty over visual flash
+Never build a visualization that teaches a wrong mental model, even if it looks cool. If a visual metaphor contradicts the math (e.g., a "spring snap-back" implying elastic restoring force where none exists, or a sequential animation of a parallel operation), **kill it**. The right visual is one where the math and the picture say the same thing. When in doubt, the Math Agent is right.
+
+### Precompute everything for lectures, add live exploration separately
+Lecture demos must be **bulletproof** — zero dependence on WebGL compilation, network requests, or GPU availability. Precompute all data as static JSON. Then, as a separate mode (behind a tab), offer live computation for student exploration. This "hybrid architecture" gives professors reliability and students genuine interactivity.
+
+### Default to 3D when the concept is spatial
+Surfaces, manifolds, vector fields, loss landscapes, decision boundaries in feature space, transformations — these are 3D concepts flattened into 2D in textbooks. Our job is to unflatten them. Use Three.js / React Three Fiber with orbit controls so the instructor can rotate the view live.
 
 **When to use 3D:**
 - Loss surfaces and optimization landscapes → 3D surface with a ball rolling on it
@@ -20,312 +36,247 @@ A library of proven patterns for interactive math visualizations, organized by t
 - 1D function plots (derivative, integral, Taylor series)
 - Probability distributions (PDFs, histograms)
 - Tree/graph structures (neural network diagrams, Bayesian networks)
+- Concepts where the key insight is in pixel-level detail (perturbation maps, heatmaps)
 - Concepts that are fundamentally about 2D slices (epsilon-delta bands)
 
-**When in doubt, choose 3D.** It's always possible to add a "2D projection" view as a secondary panel. The reverse — making a 2D app feel 3D — is impossible.
+**When both:** Use 3D as the primary view with a 2D companion panel showing a projection, cross-section, or synchronized 2D readout. The 3D builds spatial intuition; the 2D connects to familiar textbook representations.
 
 ---
 
-## Universal Patterns
+## Structural Patterns (How to organize the whole app)
 
-These patterns appear across many math topics:
+### The Beat-Based Presentation
+**What**: A sequence of "beats" (like slides) each revealing one layer of the concept, with navigation between them.
+**Why it works**: Controls cognitive load. Each beat answers one question, raised by the previous beat. The professor advances when ready — no auto-play stress.
+**Structure**:
+1. **Cold open** (5-10s, non-interactive): A dramatic hook that creates shock or curiosity
+2. **Exploration** (30-60s): The main interactive beat — one primary control (slider, drag)
+3. **Reveal** (20-30s): A visual reveal showing the underlying mechanism (sign map, gradient field, decomposition)
+4. **Comparison** (20-30s): Side-by-side of method A vs B, or before vs after
+5. **Implication** (20-30s): A toggle showing the consequence (robust vs standard, trained vs untrained)
+6. **Gallery / Lab** (post-lecture): Browse variations, try your own input
+
+**Key details**:
+- Each beat is independently reachable (keyboard 1-4, clickable dots)
+- A persistent control (e.g., parameter slider) carries across beats
+- Transitions are 400ms crossfades, not distracting page animations
+- Keyboard-first: the professor uses a wireless clicker that sends ←→ arrow keys
+
+### The Hybrid Architecture (Precomputed + Live)
+**What**: Core demo runs on precomputed static JSON. A separate "Lab Mode" tab loads a live ML model for student exploration.
+**Why it works**: The lecture path is bulletproof (works on a 2019 MacBook Air with no WiFi). The lab path gives genuine interactivity (students explore their own inputs, see novel results).
+**Key details**:
+- Core beats: zero live inference, all canvas rendering from precomputed arrays
+- Lab mode: lazy-loaded ML framework (TF.js, ONNX.js), clearly labeled "Results may vary — live computation"
+- Data loading: core JSON on startup (~1MB), heavy data (3D surfaces, robust models) lazy-loaded when first needed
+- The core demo is pedagogically complete WITHOUT lab mode. Lab mode is a bonus, not a crutch.
+
+---
+
+## Interaction Patterns (Individual controls and gestures)
 
 ### The Slider Reveal
-**What**: A parameter slider that smoothly transitions between a simple and complex view.  
-**Why it works**: Lets the student control the pace of complexity. The act of dragging creates ownership of the insight.  
-**Best for**: Anything with a parameter that changes behavior (n terms, learning rate, sample size).  
-**Key detail**: Always show the parameter value prominently. Animate the transition, don't snap.
+**What**: A parameter slider that smoothly transitions between states.
+**Why it works**: The act of dragging creates ownership. The student controls the pace.
+**Best for**: Anything with a continuous parameter (ε, learning rate, n terms, sample size).
+**Key details**:
+- Show the parameter value prominently (large, monospace, 3+ decimal places for small values)
+- Animate transitions — don't snap
+- **Magnetic snap**: if there's a critical threshold, add a ±zone where the slider snaps to the exact value on release (300ms ease-out). This lets the professor reliably find the dramatic moment.
+- Color-code the rail: safe zone in one color, danger zone in another, flash at the threshold
 
 ### The Comparison Split
-**What**: Two side-by-side panels showing the same concept under different conditions.  
-**Why it works**: Comparison is one of the strongest tools for building intuition. Side-by-side removes the need to remember.  
-**Best for**: Before/after, method A vs method B, different parameter regimes.  
-**Key detail**: Sync the interactions — dragging in one panel should update both. Highlight differences with color.
+**What**: Two side-by-side panels showing the same concept under different conditions, with a draggable divider.
+**Why it works**: Comparison is the strongest tool for building intuition. Side-by-side removes the need to remember.
+**Best for**: Before/after, method A vs B, different parameter regimes, standard vs robust.
+**Key details**:
+- Sync interactions — dragging in one panel updates both
+- The divider is draggable (20%-80% range) with a visible handle
+- Status badges below each side ("Method A — WORKS ✓" / "Method B — FAILS ✗") in contrasting colors
+- Keyboard toggle (e.g., G key) for full-image blink comparison (150ms crossfade) as an alternative to the split
+
+### The Reveal Animation
+**What**: A hidden layer of information materializes over the primary view (e.g., a gradient map over an image).
+**Why it works**: The "before" builds anticipation. The "after" is the aha moment. The transition between them is dramatic.
+**Best for**: Showing underlying structure (sign maps, attention maps, gradient fields, feature activations).
+**Key details**:
+- Trigger: keyboard key (R for reveal) + visible button with shortcut hint
+- Animation: primary view dims to 30-40% opacity (300ms), overlay fades in (500ms, slightly delayed)
+- The overlay should be visually striking — this is often the "screenshot moment"
+- Toggle back: same animation in reverse
 
 ### The Build-Up
-**What**: Start with nothing and add elements one at a time (terms, data points, layers).  
-**Why it works**: Prevents overwhelm. Each addition is a small, digestible step.  
-**Best for**: Series, sums, constructive proofs, neural network layers.  
+**What**: Start with nothing and add elements one at a time (terms, data points, layers).
+**Why it works**: Prevents overwhelm. Each addition is a small, digestible step.
+**Best for**: Series, sums, constructive proofs, neural network layers.
 **Key detail**: Have a clear "add one more" button AND a slider for jumping to any count.
 
 ### The Particle Drop
-**What**: Drop a point/particle into a system and watch where it goes.  
-**Why it works**: Makes abstract vector fields, gradient landscapes, and flows tangible.  
-**Best for**: Vector fields, gradient descent, dynamical systems, probability flows.  
+**What**: Drop a point/particle into a system and watch where it goes.
+**Why it works**: Makes abstract vector fields, gradient landscapes, and flows tangible.
+**Best for**: Vector fields, gradient descent, dynamical systems, probability flows.
 **Key detail**: Leave trails so students can see the path. Allow multiple particles simultaneously.
 
 ### The Drag-to-Discover
 **What**: Let the student drag a point and watch dependent quantities update in real time.
-**Why it works**: Direct manipulation is the most intuitive interaction. "What happens if I move this?" is a natural question.
+**Why it works**: Direct manipulation is the most intuitive interaction.
 **Best for**: Function exploration, geometric constructions, constraint systems.
-**Key detail**: Constrain the drag to valid regions. Show the dependent values as large, updating numbers.
+**Key detail**: Constrain the drag to valid regions. Show dependent values as large, updating numbers.
 
 ### The Orbitable Scene (3D)
-**What**: A Three.js scene with orbit controls — the user can rotate, zoom, and pan a 3D visualization.
-**Why it works**: Rotation is the killer feature of 3D. A static 3D render is no better than 2D; the ability to orbit transforms understanding. Students see the full geometry from any angle, and the instructor can dramatically rotate to reveal hidden structure.
-**Best for**: Surfaces, manifolds, loss landscapes, decision boundaries, vector fields, any concept with spatial structure.
-**Key detail**: Set a good default camera angle that shows the concept clearly. Use `autoRotate` with slow speed (0.5–1.0) when idle so the scene feels alive. Add damping to orbit controls for smooth feel. Always provide a "Reset View" button.
-**Implementation**: React Three Fiber (`@react-three/fiber`) + Drei helpers (`@react-three/drei` for OrbitControls, Grid, Text, etc.). Prefer R3F over raw Three.js for React integration.
+**What**: A Three.js scene with orbit controls.
+**Why it works**: Rotation is the killer feature of 3D. The ability to orbit transforms understanding.
+**Best for**: Surfaces, manifolds, loss landscapes, decision boundaries.
+**Key details**: Good default camera angle, `autoRotate` at 0.5 when idle, damping for smooth feel, always include "Reset View" button. Camera-angle-triggered captions ("from this angle, notice how...") add narrative to rotation.
+**Implementation**: React Three Fiber + Drei helpers.
 
 ### The 3D Surface Explorer
-**What**: A parametric or data-driven surface rendered as a mesh in 3D, with interactive elements on it (points, arrows, paths).
-**Why it works**: Surfaces are the natural home of gradients, optimization, and manifold concepts. Seeing a surface from multiple angles builds geometric intuition that no 2D contour plot can match.
+**What**: A parametric or data-driven surface rendered as a mesh with interactive elements on it.
 **Best for**: Loss landscapes, probability surfaces, potential fields, data manifolds.
-**Key detail**: Use a translucent or wireframe surface so objects behind/inside are visible. Color-code the surface by height (value) using a gradient. Add a ground plane with grid for spatial reference. Lighting matters — use hemisphere light + one directional light with soft shadows.
-
-### The 3D Slice View
-**What**: A 3D volume or surface with a movable 2D slice plane. The user drags the slice plane through the volume and sees the cross-section update in a side panel.
-**Why it works**: Bridges 3D and 2D understanding. Students see the full geometry in 3D, then see a familiar 2D cross-section — connecting what they know to the richer structure.
-**Best for**: Decision boundaries in 3D feature space, multivariate distributions, high-dimensional concepts projected to 3D.
-**Key detail**: The slice plane should be visible in the 3D scene as a semi-transparent quad. Animate the slice movement smoothly. Show the 2D cross-section in a synchronized side panel.
+**Key detail**: Use translucent material so objects behind are visible. Color-code by height. Add a ground plane grid. Use wireframe overlay for depth perception.
 
 ### The Animated Trajectory (3D)
-**What**: A point or particle moves along a path on a 3D surface, leaving a glowing trail.
-**Why it works**: Combines the Particle Drop with 3D spatial understanding. Students see the path *on* the surface, understanding how the geometry constrains movement.
+**What**: A point moves along a path on a 3D surface, leaving a glowing trail.
 **Best for**: Gradient descent on loss surfaces, adversarial perturbation paths, dynamical systems.
-**Key detail**: The trail should glow and fade. Show the current position as a bright sphere. Optionally show velocity/gradient as a 3D arrow at the current position. Allow the user to rotate the scene while the animation plays.
+**Key detail**: Trail should glow and fade. Show current position as a bright sphere. Multiple comparison paths (different optimizers, different attacks) in different colors.
+
+### The Shatter/Transform Label
+**What**: A text label shatters into fragments and reassembles as new text with a new color.
+**Why it works**: Communicates "something just broke/changed" viscerally. More memorable than a text swap.
+**Best for**: Classification flips, phase transitions, threshold crossings.
+**Key details**: 12 CSS clip-path polygon fragments, 300ms total. Use as a recurring motif — introduce it in the cold open, call back to it in later beats.
 
 ---
 
-## Calculus / Analysis Patterns
+## Topic-Specific Patterns
 
-### Limit Explorer
-**Pattern**: Drag-to-Discover + Slider Reveal  
-**Concept**: Show a point approaching a limit from both sides.  
-**Visualization**: Animated point on a curve, with a zooming window that magnifies the neighborhood. As the student drags closer to the limit point, the zoom increases and the function value readout shows convergence.  
-**Controls**: Point position (drag), zoom level, show/hide limit value, epsilon band toggle.
+### Calculus / Analysis
 
-### Derivative as Slope
-**Pattern**: Drag-to-Discover  
-**Concept**: A tangent line that follows a dragged point along a curve.  
-**Visualization**: The curve is fixed; the tangent line rotates smoothly as the point moves. A second panel below shows the derivative function being "painted" by the tangent slope values.  
-**Controls**: Point position (drag), show/hide derivative curve, function selector.
+**Limit Explorer**: Drag-to-Discover + Slider Reveal. Point approaching a limit with zooming window.
+**Derivative as Slope**: Tangent line following a dragged point, derivative "painted" below.
+**Integral as Area**: Riemann sum rectangles with n slider (1-200). Sum converges as n grows.
+**Taylor Series**: Build-Up. Polynomial "chases" the function term by term.
+**Epsilon-Delta**: Slider Reveal. ε-band and δ-band with color-coded valid/invalid regions.
 
-### Integral as Area
-**Pattern**: Build-Up + Slider Reveal  
-**Concept**: Riemann sums converging to the definite integral.  
-**Visualization**: Colored rectangles under a curve. Slider controls n (number of rectangles). As n increases, rectangles get thinner and the sum value converges. Show the sum value and the true integral value side by side.  
-**Controls**: n slider (1–200), method toggle (left/right/midpoint/trapezoidal), function selector, show/hide true integral value.
+### Linear Algebra
 
-### Taylor Series Approximation
-**Pattern**: Build-Up  
-**Concept**: Polynomial approximation improving term by term.  
-**Visualization**: The true function in one color, the Taylor polynomial in another. As terms are added, the polynomial "chases" the function. Show the polynomial equation updating in real time. Highlight the radius of convergence.  
-**Controls**: Number of terms (build-up button + slider), center point (drag), function selector.
+**Matrix Transformation (3D)**: Orbitable Scene + Drag-to-Discover. 3D shape deforms as matrix entries change. Eigenvectors shown as persistent arrows.
+**SVD Decomposition (3D)**: Orbitable Scene + Build-Up. Unit sphere → rotate → stretch → rotate, animated in 3D steps.
+**Eigenvector Anatomy**: Comparison Split. Left: all vectors transform. Right: eigenvectors stay on their span.
+**Span and Independence**: Drag-to-Discover. Draggable vectors with colored span region. Dependent vectors "snap" into existing span.
 
-### Epsilon-Delta
-**Pattern**: Slider Reveal + Drag-to-Discover  
-**Concept**: The formal definition of a limit.  
-**Visualization**: A function plot with horizontal ε-band around L and vertical δ-band around a. Color-code the regions: green where the condition holds, red where it fails. Let students drag ε and see that a valid δ can always be found (for continuous functions).  
-**Controls**: ε slider, δ slider (or auto-compute δ), function selector, point selector.
+### Statistics / Probability
 
----
+**Distribution Explorer**: Slider Reveal. PDF morphs with parameters. Key statistics update as numbers.
+**Central Limit Theorem**: Build-Up + Particle Drop. Sample means accumulate into a histogram → bell curve.
+**Bayes' Theorem**: Slider Reveal + Visual Encoding. Population grid filtered by evidence.
+**Regression**: Drag-to-Discover. Draggable points, live regression line, visible residuals.
+**Hypothesis Testing**: Slider Reveal + Comparison Split. Null distribution with rejection regions.
 
-## Linear Algebra Patterns
+### Machine Learning
 
-### Matrix Transformation
-**Pattern**: Drag-to-Discover  
-**Concept**: How a 2×2 matrix transforms space.  
-**Visualization**: A grid of points (or a recognizable shape) in 2D. The matrix entries are editable. As entries change, the grid transforms in real time. Highlight: determinant = area factor, eigenvectors stay on their lines.  
-**Controls**: 4 matrix entry inputs (or sliders), shape selector (grid/circle/letter), show/hide eigenvectors, show determinant value.
-
-### Eigenvector Anatomy
-**Pattern**: Comparison Split  
-**Concept**: Eigenvectors are the directions that only get scaled, not rotated.  
-**Visualization**: Left panel: all vectors get transformed (show a circle becoming an ellipse). Right panel: highlight the eigenvectors that stay on their span lines. Animate the transformation as a smooth morph.  
-**Controls**: Matrix entries, animation speed, show/hide eigenvalue labels.
-
-### Span and Linear Independence
-**Pattern**: Drag-to-Discover  
-**Concept**: What subspace a set of vectors spans.  
-**Visualization**: 2D or 3D space with draggable vectors. The span fills in as a colored region (line in 2D, plane in 3D). When a vector becomes linearly dependent, it visually "snaps" into the existing span and the region doesn't grow.  
-**Controls**: Drag vector endpoints, add/remove vectors, dimension toggle (2D/3D).
-
-### SVD Decomposition (3D)
-**Pattern**: Orbitable Scene + Build-Up
-**Concept**: SVD breaks a transformation into rotate → stretch → rotate.
-**Visualization**: **3D scene** showing a unit sphere being transformed in three animated steps. Step 1 (Vᵀ): the sphere rotates. Step 2 (Σ): the sphere stretches into an ellipsoid along axis-aligned directions. Step 3 (U): the ellipsoid rotates to its final orientation. Each step is a smooth animation. The user can orbit the scene to see the full 3D geometry. Eigenvectors shown as colored arrows through the ellipsoid.
-**Controls**: 3×3 matrix entries (editable), step-through (one step at a time or all at once), animation speed, orbit controls, show/hide eigenvectors.
-**3D Details**: Unit sphere as `SphereGeometry(1, 64, 64)` with wireframe overlay. Apply matrix transformations via vertex shader or geometry manipulation. Eigenvector arrows as `ArrowHelper`. Use `MeshPhysicalMaterial` with `wireframe: true` overlay on solid mesh for visual depth.
-
-### 3D Matrix Transformation
-**Pattern**: Orbitable Scene + Drag-to-Discover
-**Concept**: How a 3×3 matrix transforms 3D space.
-**Visualization**: **3D scene** with a recognizable shape (cube, letter, teapot) displayed with orbit controls. As the user edits the 3×3 matrix entries, the shape deforms in real time. Eigenvectors shown as persistent arrows that only scale, not rotate. The determinant is displayed as a scaling factor with a volume indicator.
-**Controls**: 9 matrix entry inputs, shape selector, show/hide eigenvectors, show determinant, animation toggle between original and transformed, orbit controls.
+**Gradient Descent on 3D Loss Surface**: Orbitable Scene + Animated Trajectory + Comparison Split. Multiple optimizer paths (SGD, momentum, Adam) as colored trails on a 3D surface.
+**Decision Boundary (3D)**: Orbitable Scene + 3D Slice View. Data points as glowing spheres, decision boundary as translucent surface, model toggle (linear → SVM → neural net).
+**Adversarial Attacks**: Beat-Based Presentation + Reveal Animation + Comparison Split. Beat structure: clean input → slider perturbation → sign map reveal → attack comparison → defense toggle. Precomputed data for reliability.
+**Neural Network Forward Pass**: Build-Up. Activations propagate layer by layer. Edges show weights.
+**Bias-Variance Tradeoff**: Comparison Split + Build-Up. Training fit vs test performance as complexity grows.
+**Dimensionality Reduction (3D)**: Orbitable Scene + Animated Trajectory. Point cloud animated from scattered → clustered projections.
 
 ---
 
-## Statistics / Probability Patterns
-
-### Distribution Explorer
-**Pattern**: Slider Reveal  
-**Concept**: How distribution shape changes with parameters.  
-**Visualization**: A smooth PDF curve with shaded area under it. Parameter sliders morph the shape in real time. Show key statistics (mean, variance, skewness) updating as numbers.  
-**Controls**: Distribution type selector, 2–3 parameter sliders (context-dependent), show/hide CDF overlay, show/hide mean/variance markers.
-
-### Central Limit Theorem
-**Pattern**: Build-Up + Particle Drop  
-**Concept**: Sample means converge to normal regardless of source distribution.  
-**Visualization**: Top panel: the source distribution (can be weird — uniform, exponential, bimodal). Bottom panel: histogram of sample means, initially empty. Each "drop" draws a sample, computes the mean, and adds it to the histogram. As samples accumulate, the histogram approaches a bell curve. Overlay the theoretical normal.  
-**Controls**: Source distribution selector, sample size n, draw speed, draw-one vs auto-draw toggle, reset button.
-
-### Bayes' Theorem
-**Pattern**: Slider Reveal + Visual Encoding  
-**Concept**: How prior and likelihood combine to form the posterior.  
-**Visualization**: A population grid (e.g., 1000 dots) colored by category. Filter by evidence to show conditional probability visually. Numeric readouts show P(A), P(B|A), and P(A|B) updating.  
-**Controls**: Prior probability slider, sensitivity slider, specificity slider, show/hide calculation steps.
-
-### Regression
-**Pattern**: Drag-to-Discover  
-**Concept**: How data points determine the best-fit line.  
-**Visualization**: Scatter plot with draggable points. The regression line updates instantly. Show residual lines connecting each point to the line. Display R², slope, intercept as large numbers. Dragging a point far away shows how outliers affect the fit.  
-**Controls**: Add/remove/drag points, show/hide residuals, show/hide confidence band, toggle regression type (linear/polynomial).
-
-### Hypothesis Testing
-**Pattern**: Slider Reveal + Comparison Split  
-**Concept**: The logic of null hypothesis testing.  
-**Visualization**: A distribution curve (null distribution) with rejection regions shaded. A test statistic marker that the student can drag. When it enters the rejection region, a clear visual signal (color change, label) shows rejection. Side panel shows Type I and Type II error probabilities.  
-**Controls**: Significance level α slider, sample size slider, effect size slider, one-tailed/two-tailed toggle.
-
----
-
-## Machine Learning Patterns
-
-### Gradient Descent on 3D Loss Surface
-**Pattern**: Orbitable Scene + Animated Trajectory + Comparison Split
-**Concept**: Optimization on a loss surface.
-**Visualization**: A **3D surface mesh** rendered in Three.js/R3F with orbit controls. The loss function is color-coded by height (cool blues at minima, hot reds at maxima). A glowing sphere drops onto the surface and rolls downhill, leaving a luminous trail. The camera auto-rotates slowly to reveal the landscape. A side panel shows the 2D contour projection for reference. Multiple optimizer paths (SGD, momentum, Adam) rendered simultaneously as differently-colored trails.
-**Controls**: Click on the surface to place starting point, learning rate slider, optimizer selector, momentum slider, reset, step-by-step mode, toggle between 3D surface view and 2D contour view.
-**3D Details**: Surface mesh 100×100 vertices, `MeshStandardMaterial` with `vertexColors`, hemisphere lighting, soft shadow on ground plane. Ball: `MeshPhysicalMaterial` with emissive glow, 0.05 radius. Trail: `Line2` with gradient opacity (bright at head, fading).
-
-### Decision Boundary in 3D Feature Space
-**Pattern**: Orbitable Scene + 3D Slice View + Drag-to-Discover
-**Concept**: How different models carve up the feature space.
-**Visualization**: **3D scene** with data points as glowing spheres (two colors for two classes), floating in a 3D feature space. The decision boundary is rendered as a semi-transparent surface cutting through the space. Toggle between models (linear → flat plane, SVM → curved surface, neural net → complex warped surface). A movable slice plane shows the familiar 2D cross-section in a side panel.
-**Controls**: Add points by clicking in 3D space, class toggle, model selector, regularization slider, slice plane height, orbit controls.
-**3D Details**: Data points as `SphereGeometry` with `MeshPhysicalMaterial` (emissive, slight bloom). Decision surface as `MeshPhysicalMaterial` with `opacity: 0.3, transparent: true, side: DoubleSide`. Grid ground plane with `GridHelper`.
-
-### Adversarial Attack on the Data Manifold (3D)
-**Pattern**: Orbitable Scene + 3D Surface Explorer + Animated Trajectory
-**Concept**: How FGSM crafts adversarial examples by following the gradient on the loss surface.
-**Visualization**: **3D scene** with a curved data manifold surface. Data points sit on the manifold as glowing spheres. The decision boundary is a glowing line/ribbon on the manifold surface. The gradient is shown as a 3D arrow at the data point. The adversarial perturbation animates the point along the gradient direction, crossing the decision boundary. The loss value updates live. A side panel shows the image triplet (original, perturbation, adversarial). The user can orbit the entire scene to see the manifold from different angles.
-**Controls**: Orbit/zoom/pan, epsilon slider, step-through animation, toggle gradient arrows, toggle manifold wireframe.
-**3D Details**: Manifold as parametric surface with `MeshPhysicalMaterial` (translucent, vertex-colored by class region). Gradient arrow as `ArrowHelper` or custom `ConeGeometry` + `CylinderGeometry`. Perturbation path as animated `Line2` with glow. Decision boundary as `TubeGeometry` along the boundary curve.
-
-### Neural Network Forward Pass
-**Pattern**: Build-Up
-**Concept**: How data flows through a neural network.
-**Visualization**: Network diagram with nodes and edges. Input values propagate through, with each node showing its activation value. Edges show weights (thickness = magnitude, color = sign). Animate the forward pass layer by layer.
-**Controls**: Input values (drag or slider), number of layers, nodes per layer, activation function selector, step-through mode.
-
-### Bias-Variance Tradeoff
-**Pattern**: Comparison Split + Build-Up
-**Concept**: Underfitting vs overfitting as model complexity changes.
-**Visualization**: Left panel: the fitted model on training data. Right panel: performance on test data. A complexity slider (e.g., polynomial degree) controls both. As complexity increases, training fit improves but test error eventually rises. Show train/test error curves below.
-**Controls**: Complexity slider, generate new data button, show/hide true function, noise level slider.
-
-### Dimensionality Reduction Theater (3D)
-**Pattern**: Orbitable Scene + Animated Trajectory
-**Concept**: How PCA/t-SNE projects high-dimensional data to lower dimensions.
-**Visualization**: **3D scene** with data points as glowing spheres in a point cloud. Initially scattered in a high-dimensional-looking arrangement, then animated to their projected positions as clusters emerge. The principal components shown as 3D arrows. Orbit controls let the user explore the cluster structure from any angle.
-**Controls**: Dataset selector, method toggle (PCA/t-SNE/UMAP), perplexity slider (for t-SNE), animate projection toggle, orbit controls.
-**3D Details**: Points as instanced meshes for performance (`InstancedMesh`). Use `PointsMaterial` with size attenuation for large point clouds. Smooth `lerp` animation between original and projected positions over 2000ms.
-
----
-
-## Color Palettes for Math Visualizations
+## Color Palettes
 
 ### Dark Lecture (Default)
-Best for projectors and lecture halls.
+Best for projectors and lecture halls. Tested for WCAG AA contrast and common color vision deficiencies.
 - Background: `#0f172a` (deep navy)
 - Surface: `#1e293b` (slate)
-- Primary: `#38bdf8` (sky blue)
-- Secondary: `#f472b6` (pink)
-- Accent: `#34d399` (emerald)
-- Warning: `#fbbf24` (amber)
-- Text: `#f1f5f9` (near white)
-- Muted text: `#94a3b8` (slate gray)
-- Grid: `#334155` (dark slate)
+- Primary safe: `#38bdf8` (sky blue) — correct, true, baseline
+- Danger/adversarial: `#f472b6` (pink) — wrong, adversarial, out-of-bounds
+- Success: `#34d399` (emerald) — flipped, confirmed, achieved
+- Warm accent: `#fbbf24` (amber) — positive direction, highlighted
+- Cool accent: `#22d3ee` (cyan) — negative direction, complementary
+- Text primary: `#f1f5f9` (near white)
+- Text muted: `#94a3b8` (slate gray)
+- Dormant/grid: `#131c2e` / `#334155`
+
+Pair amber + cyan for dichromatic-safe binary encoding (e.g., +1/-1 directions). Pair sky blue + pink for safe/danger semantics.
 
 ### Light Academic
 For printed handouts or bright rooms.
-- Background: `#fafaf9` (warm white)
-- Surface: `#ffffff`
-- Primary: `#2563eb` (royal blue)
-- Secondary: `#dc2626` (red)
-- Accent: `#16a34a` (green)
-- Warning: `#d97706` (dark amber)
-- Text: `#1c1917` (near black)
-- Muted text: `#78716c` (stone)
-- Grid: `#e7e5e4` (light stone)
+- Background: `#fafaf9`, Primary: `#2563eb`, Secondary: `#dc2626`, Accent: `#16a34a`, Text: `#1c1917`
 
 ### Vibrant Math
-For engaging younger audiences or casual settings.
-- Background: `#18181b` (zinc black)
-- Surface: `#27272a` (zinc dark)
-- Primary: `#a78bfa` (violet)
-- Secondary: `#fb923c` (orange)
-- Accent: `#22d3ee` (cyan)
-- Warning: `#facc15` (yellow)
-- Text: `#fafafa` (white)
-- Muted text: `#a1a1aa` (zinc gray)
-- Grid: `#3f3f46` (zinc mid)
+For engaging younger audiences.
+- Background: `#18181b`, Primary: `#a78bfa`, Secondary: `#fb923c`, Accent: `#22d3ee`, Text: `#fafafa`
+
+---
+
+## Typography
+
+### For Modern/Bold (Recommended)
+- **Display/hero labels**: Syne Bold 44-52px — striking, geometric
+- **Numbers/readouts**: JetBrains Mono 18-28px — monospace for alignment, technical feel
+- **Body/microcopy**: DM Sans 11-18px — clean, readable, neutral
+- Load via `@fontsource` packages (self-hosted, no CDN dependency)
+
+### For Lecture Slides
+- Title: Space Mono or JetBrains Mono 32-48px
+- Labels: DM Sans or Outfit 16-20px
+- Values: JetBrains Mono 20-28px
+
+### For Elegant/Academic
+- Title: Playfair Display or Libre Baskerville 28-36px
+- Labels: Source Sans 3 14-18px
+- Values: IBM Plex Mono 18-24px
+
+**Minimum projector-legible size for any critical number: 20px.**
 
 ---
 
 ## 3D Scene Defaults
 
-When building 3D visualizations with Three.js / React Three Fiber, use these defaults unless the concept calls for something specific:
+When building 3D visualizations with Three.js / React Three Fiber:
 
 ### Lighting
-- **Hemisphere light**: sky `#38bdf8`, ground `#0f172a`, intensity 0.6 — provides ambient fill without harsh shadows
-- **Directional light**: color `#ffffff`, intensity 0.8, position `(5, 10, 5)`, castShadow enabled
-- **Optional**: Point light at camera position, intensity 0.3, for subtle fill on the front face
+- Hemisphere light: sky `#38bdf8`, ground `#0f172a`, intensity 0.6
+- Directional light: white, intensity 0.8, position `(5, 10, 5)`, castShadow
+- Optional: point light at camera position, intensity 0.3
 
 ### Materials
-- **Surfaces**: `MeshPhysicalMaterial` with `roughness: 0.4`, `metalness: 0.1`, `transparent: true`, `opacity: 0.7` for manifolds and decision boundaries. Use `side: DoubleSide` so surfaces are visible from behind
-- **Data points**: `MeshPhysicalMaterial` with `emissive` matching the point color at 0.3 intensity — creates a subtle glow. Add `<Bloom>` post-processing for extra punch
-- **Wireframes**: Overlay `MeshBasicMaterial` with `wireframe: true`, `opacity: 0.15` on solid surfaces for depth cues
-- **Trails/paths**: `Line2` from `three/examples/jsm/lines` for thick, anti-aliased lines. Use `LineMaterial` with `linewidth: 3`
+- Surfaces: `MeshPhysicalMaterial`, `roughness: 0.4`, `metalness: 0.1`, `transparent: true`, `opacity: 0.7`, `side: DoubleSide`
+- Data points: `MeshPhysicalMaterial` with `emissive` at 0.3 intensity + `<Bloom>` post-processing
+- Wireframes: `MeshBasicMaterial` with `wireframe: true`, `opacity: 0.15` overlay for depth cues
+- Trails/paths: `Line2` with `LineMaterial`, `linewidth: 3`, gradient opacity
 
 ### Camera & Controls
-- **Default camera**: `PerspectiveCamera`, fov 50, position `(3, 3, 3)`, lookAt `(0, 0, 0)`
-- **Orbit controls**: `enableDamping: true`, `dampingFactor: 0.05`, `autoRotate: true`, `autoRotateSpeed: 0.5`, `minDistance: 2`, `maxDistance: 20`
-- **Reset view button**: Always include — returns camera to default position with a smooth 500ms `lerp`
+- Default: `PerspectiveCamera`, fov 50, position `(3, 3, 3)`, lookAt `(0, 0, 0)`
+- OrbitControls: `enableDamping: true`, `dampingFactor: 0.05`, `autoRotate: true`, `autoRotateSpeed: 0.5`
+- Min distance: 2, max distance: 20
+- Always include "Reset View" button with smooth 500ms camera lerp
 
-### Ground Plane & Grid
-- `GridHelper(10, 20, '#334155', '#1e293b')` — provides spatial reference without visual clutter
-- Position at y = lowest point of the visualization
-- Optional: `ContactShadows` from Drei for soft ground shadows
-
-### Post-Processing (for visual impact)
-- `<EffectComposer>` from `@react-three/postprocessing`
-- `<Bloom luminanceThreshold={0.6} intensity={0.5} />` — makes emissive elements glow
-- `<SMAA />` — anti-aliasing for clean edges
+### Post-Processing
+- `<EffectComposer>` with `<Bloom luminanceThreshold={0.6} intensity={0.5} />`
+- `<SMAA />` for anti-aliasing (not FXAA — cleaner mesh edges)
 - Use sparingly — bloom on data points and trails, not on everything
 
 ### Performance
-- Use `InstancedMesh` for >50 identical objects (data points)
-- Use `BufferGeometry` for custom surfaces (not `Geometry`)
-- Target 60fps — profile with `<Stats />` from Drei during development
-- For surfaces: 100×100 vertex grid is usually sufficient. Go to 200×200 only if visual quality demands it
+- `InstancedMesh` for >50 identical objects
+- `BufferGeometry` with typed arrays for custom surfaces
+- 100×100 vertex grid is usually sufficient for surfaces
+- Target 60fps — profile with `<Stats />` from Drei
+- Lazy-load R3F and Three.js — don't include in main bundle
 
 ---
 
-## Typography Recommendations
+## Design Principles Checklist
 
-### For Lecture Slides
-- Title: **Space Mono** or **JetBrains Mono** at 32–48px (monospace feels "mathy")
-- Labels: **DM Sans** or **Outfit** at 16–20px
-- Values/Numbers: **JetBrains Mono** at 20–28px (monospace for alignment)
+Before finalizing any visualization concept, verify:
 
-### For Elegant/Academic
-- Title: **Playfair Display** or **Libre Baskerville** at 28–36px
-- Labels: **Source Sans 3** at 14–18px
-- Values/Numbers: **IBM Plex Mono** at 18–24px
-
-### For Modern/Bold
-- Title: **Syne** or **Clash Display** at 36–56px
-- Labels: **General Sans** or **Satoshi** at 14–18px
-- Values/Numbers: **Space Mono** at 20–28px
+- [ ] **Story, not dashboard**: Is there a narrative arc (hook → explore → reveal → implication)?
+- [ ] **One signature moment**: Can you describe the screenshot in one sentence?
+- [ ] **Mathematically honest**: Does every visual element teach the correct mental model?
+- [ ] **Minimal controls**: Can a professor use it with a wireless clicker (←→ + number keys)?
+- [ ] **Precomputed core**: Could the main demo run from a static JSON file with zero network/GPU?
+- [ ] **Back-row legible**: Is every critical number ≥20px? Is the signature visual readable at 15m on a 1080p projector?
+- [ ] **High-contrast fallback**: Is there a projector mode that drops glow effects and increases contrast?
+- [ ] **Honest about limitations**: Does the visualization clearly label what it's showing vs. hiding (e.g., "782 other dimensions not shown")?
