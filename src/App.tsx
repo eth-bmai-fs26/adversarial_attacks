@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useBeatNavigation } from './hooks/useBeatNavigation';
 import BeatDots from './components/BeatDots';
 import BeatContainer from './components/BeatContainer';
+import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import Beat1Crime from './beats/Beat1Crime';
 import { loadStandardModel, getImageById } from './lib/data';
 import type { Beat, ModelData } from './types';
@@ -26,6 +27,7 @@ export default function App() {
   const {
     currentBeat,
     goToBeat,
+    goNext,
     isTransitioning,
   } = useBeatNavigation();
 
@@ -52,6 +54,9 @@ export default function App() {
   const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
 
   function renderBeat() {
+    if (currentBeat === 0) {
+      return <Beat0ColdOpen isActive={currentBeat === 0} onComplete={goNext} />;
+    }
     if (currentBeat === 1 && selectedImage) {
       return (
         <Beat1Crime
