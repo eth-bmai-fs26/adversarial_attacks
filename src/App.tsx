@@ -6,7 +6,8 @@ import Beat0ColdOpen from './beats/Beat0ColdOpen';
 import Beat1Crime from './beats/Beat1Crime';
 import Beat2aGhost from './beats/Beat2aGhost';
 import Beat2bSplit from './beats/Beat2bSplit';
-import { loadStandardModel, getImageById } from './lib/data';
+import Beat3Adversarial from './beats/Beat3Adversarial';
+import { loadStandardModel, loadRobustModel, getImageById } from './lib/data';
 import type { Beat, ModelData } from './types';
 
 const BEAT_LABELS: Record<string, string> = {
@@ -34,12 +35,14 @@ export default function App() {
   } = useBeatNavigation();
 
   const [standardModel, setStandardModel] = useState<ModelData | null>(null);
+  const [robustModel, setRobustModel] = useState<ModelData | null>(null);
   const [selectedImageId, setSelectedImageId] = useState(0);
   const [epsilon, setEpsilon] = useState(0);
 
-  // Load standard model data on mount
+  // Load model data on mount
   useEffect(() => {
     loadStandardModel().then(setStandardModel).catch(console.error);
+    loadRobustModel().then(setRobustModel).catch(console.error);
   }, []);
 
   // Reset epsilon when navigating to beat 0 (Escape key reset)
@@ -51,6 +54,10 @@ export default function App() {
 
   const selectedImage = standardModel
     ? getImageById(standardModel, selectedImageId) ?? standardModel.images[0]
+    : null;
+
+  const robustImage = robustModel
+    ? getImageById(robustModel, selectedImageId) ?? robustModel.images[0]
     : null;
 
   const showSliderArea = currentBeat !== 0 && currentBeat !== 1;
@@ -86,6 +93,17 @@ export default function App() {
           epsilon={epsilon}
           onEpsilonChange={setEpsilon}
           isActive={currentBeat === '2b' && !isTransitioning}
+        />
+      );
+    }
+    if (currentBeat === 3 && selectedImage) {
+      return (
+        <Beat3Adversarial
+          standardImageData={selectedImage}
+          robustImageData={robustImage ?? null}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          isActive={currentBeat === 3 && !isTransitioning}
         />
       );
     }
