@@ -81,8 +81,7 @@ Plus: image gallery (50 MNIST images), Lab Mode (TF.js live inference), and opti
 │       └── tokens.css         # CSS custom properties
 ├── orchestrate.sh             # Multi-agent discussion orchestrator
 ├── skill_spec/                # Reference docs for the orchestrator
-├── viz-output/                # Orchestrator output (gitignored)
-└── agents/                    # Old agent definitions (deprecated)
+└── viz-output/                # Orchestrator output (gitignored)
 ```
 
 ## Design Tokens
